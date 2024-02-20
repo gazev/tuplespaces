@@ -2,11 +2,12 @@
 
 Distributed Systems Project 2024
 
-*(fill the line below with the group identifier, for example A25 or T25, and then delete this line)*  
-**Group GXX**
 
-*(choose one of the following levels and erase the other one)*  
-**Difficulty level: I am Death incarnate! | Bring 'em on!**
+<!-- *(fill the line below with the group identifier, for example A25 or T25, and then delete this line)*   -->
+**Group GA34**
+
+<!-- *(choose one of the following levels and erase the other one)*   -->
+**Difficulty level: I am Death incarnate!**
 
 
 ### Code Identification
@@ -17,13 +18,13 @@ code dependency management, to ensure your code runs using the correct component
 
 ### Team Members
 
-*(fill the table below with the team members, and then delete this line)*
+<!-- *(fill the table below with the team members, and then delete this line)* -->
 
 | Number | Name              | User                             | Email                               |
 |--------|-------------------|----------------------------------|-------------------------------------|
-| 11111  | Alice Distributed | <https://github.com/AliceUser>   | <mailto:alice@tecnico.ulisboa.pt>   |
-| 22222  | Bob Systems       | <https://github.com/BobUser>     | <mailto:bob@tecnico.ulisboa.pt>     |
-| 33333  | Charlie Rules     | <https://github.com/CharlieUser> | <mailto:charlie@tecnico.ulisboa.pt> |
+| 93075  | Gonçalo Azevedo  | <https://github.com/gazev>   | <mailto:goncalo.r.azevedo@tecnico.ulisboa.pt>   |
+| 99986  | João Tiago       | <https://github.com/jmlt2002>     | <mailto:joao.leal.tintas@tecnico.ulisboa.pt>     |
+| 103156  | Francisco Nael Salgado     | <https://github.com/fnael> | <mailto:francisco.nael.salgado@tecnico.ulisboa.pt> |
 
 ## Getting Started
 
@@ -58,3 +59,4 @@ mvn clean install
 
 * [Maven](https://maven.apache.org/) - Build and dependency management tool;
 * [gRPC](https://grpc.io/) - RPC framework.
+

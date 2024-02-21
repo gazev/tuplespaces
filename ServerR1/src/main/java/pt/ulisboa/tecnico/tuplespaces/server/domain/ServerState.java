@@ -1,9 +1,14 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
+import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidTupleException;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServerState {
+  private static final String BGN_TUPLE = ">";
+  private static final String END_TUPLE = "<";
 
   private List<String> tuples;
 
@@ -12,11 +17,23 @@ public class ServerState {
 
   }
 
-  public void put(String tuple) {
+  public boolean isValidTuple(String tuple) {
+    return tuple.startsWith(BGN_TUPLE) && tuple.endsWith(END_TUPLE);
+  }
+
+  public void put(String tuple) throws InvalidTupleException {
+    if (!isValidTuple(tuple)) {
+      throw new InvalidTupleException(tuple);
+    }
+
     tuples.add(tuple);
   }
 
-  private String getMatchingTuple(String pattern) {
+  private String getMatchingTuple(String pattern) throws InvalidSearchPatternException {
+    if (!isValidTuple(pattern)) {
+      throw new InvalidSearchPatternException(pattern);
+    }
+
     for (String tuple : this.tuples) {
       if (tuple.matches(pattern)) {
         return tuple;
@@ -25,11 +42,19 @@ public class ServerState {
     return null;
   }
 
-  public String read(String pattern) {
+  public String read(String pattern) throws InvalidSearchPatternException {
+    if (!isValidTuple(pattern)) {
+      throw new InvalidSearchPatternException(pattern);
+    }
+
     return getMatchingTuple(pattern);
   }
 
-  public String take(String pattern) {
+  public String take(String pattern) throws InvalidSearchPatternException {
+    if (!isValidTuple(pattern)) {
+      throw new InvalidSearchPatternException(pattern);
+    }
+
     // TODO
     return null;
   }

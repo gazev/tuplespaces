@@ -1,7 +1,7 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidSearchPatternException;
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidTupleException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidTupleException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,9 @@ public class ServerState {
       throw new InvalidTupleException(tuple);
     }
 
-    tuples.add(tuple);
+    synchronized (this) {
+      tuples.add(tuple);
+    }
   }
 
   private String getMatchingTuple(String pattern) throws InvalidSearchPatternException {
@@ -33,9 +35,11 @@ public class ServerState {
       throw new InvalidSearchPatternException(pattern);
     }
 
-    for (String tuple : this.tuples) {
-      if (tuple.matches(pattern)) {
-        return tuple;
+    synchronized (this) {
+      for (String tuple : this.tuples) {
+        if (tuple.matches(pattern)) {
+          return tuple;
+        }
       }
     }
     return null;
@@ -46,7 +50,9 @@ public class ServerState {
       throw new InvalidSearchPatternException(pattern);
     }
 
-    return getMatchingTuple(pattern);
+    synchronized (this) {
+      return getMatchingTuple(pattern);
+    }
   }
 
   public String take(String pattern) throws InvalidSearchPatternException {

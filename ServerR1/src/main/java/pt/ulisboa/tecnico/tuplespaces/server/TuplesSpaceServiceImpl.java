@@ -5,11 +5,15 @@ import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc.Tuple
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import io.grpc.stub.StreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.ServerState;
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidSearchPatternException;
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.InvalidTupleException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidTupleException;
 
 public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
-  private final ServerState tuplesSpace = new ServerState();
+  private ServerState tuplesSpace;
+
+  public TuplesSpaceServiceImpl(ServerState state) {
+    this.tuplesSpace = state;
+  }
 
   @Override
   public void put(PutRequest request, StreamObserver<PutResponse> streamObserver) {

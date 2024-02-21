@@ -69,6 +69,7 @@
 						<argument>${server.port}</argument>
 						<argument>${server.qual}</argument>
 						<argument>${server.service}</argument>
+						<argument>--debug</argument>
 					</arguments>
 				</configuration>
 			</plugin>

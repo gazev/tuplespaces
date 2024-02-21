@@ -1,4 +1,4 @@
-package pt.ulisboa.tecnico.tuplespaces.server.exceptions;
+package pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions;
 
 public class InvalidSearchPatternException extends Exception {
   public InvalidSearchPatternException(String s) {

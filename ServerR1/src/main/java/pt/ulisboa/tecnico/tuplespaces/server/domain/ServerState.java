@@ -14,7 +14,6 @@ public class ServerState {
 
   public ServerState() {
     this.tuples = new ArrayList<String>();
-
   }
 
   public boolean isValidTuple(String tuple) {

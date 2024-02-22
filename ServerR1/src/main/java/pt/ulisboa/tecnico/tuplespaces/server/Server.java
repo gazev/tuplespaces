@@ -10,8 +10,8 @@ import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
 /**
  * Class encapsulating a TupleSpaces server.
  *
- * <p>The server keeps an internal Tuple Space state, initially empty, and serves clients over gRPC.
- * See the full specification of the server @ <a
+ * <p>The Class keeps an internal Tuple Space state, initially empty, and serves clients over gRPC.
+ * See the full specification of the TupleSpaces server <a
  * href="https://github.com/tecnico-distsys/TupleSpaces/blob/master/tuplespaces.md">here</a>
  *
  * <p>Example usage:
@@ -53,8 +53,8 @@ public class Server {
         String.format(
             "Running server instance. Info: Service: %s, ID: %s on %s:%d",
             this.service, this.qual, this.host, this.port));
-    final BindableService impl = new TuplesSpaceServiceImpl(state);
 
+    final BindableService impl = new TuplesSpaceServiceImpl(state);
     io.grpc.Server server = ServerBuilder.forPort(port).addService(impl).build();
 
     // add hook to catch SIGINT and perform shutdown logic

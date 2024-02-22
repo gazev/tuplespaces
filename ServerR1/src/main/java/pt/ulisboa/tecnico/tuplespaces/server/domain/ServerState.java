@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ServerState {
-  private static final String BGN_TUPLE = ">";
-  private static final String END_TUPLE = "<";
+  private static final String BGN_TUPLE = "<";
+  private static final String END_TUPLE = ">";
 
   private List<String> tuples;
 
@@ -60,12 +60,14 @@ public class ServerState {
       throw new InvalidSearchPatternException(pattern);
     }
 
-    // TODO
-    return null;
+    synchronized (this) {
+      String tuple = getMatchingTuple(pattern);
+      tuples.remove(tuple);
+      return tuple;
+    }
   }
 
-  public List<String> getTupleSpacesState() {
-    // TODO
-    return null;
+  public synchronized List<String> getTupleSpacesState() {
+    return tuples;
   }
 }

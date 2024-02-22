@@ -1,7 +1,7 @@
 package pt.ulisboa.tecnico.tuplespaces.client.grpc;
 
 import io.grpc.ManagedChannel;
-import pt.ulisboa.tecnico.tuplespaces.*;
+import pt.ulisboa.tecnico.tuplespaces.client;
 
 public class ClientService {
 
@@ -14,6 +14,8 @@ public class ClientService {
 
   private String service_name;
   private String target;
+  private ManagedChannel channel;
+  private BlockingStub blockingStub;
 
   /**
    * Creates a new ClientService
@@ -25,7 +27,8 @@ public class ClientService {
     ClientService clientService = new ClientService();
     clientService.target = target;
     clientService.service_name = service_name;
-
+    clientService.channel = newChannel(target);
+    clientService.blockingStub = newBlockingStub(this.channel);
     return clientService;
   }
 
@@ -68,7 +71,6 @@ public class ClientService {
    */
   public static ManagedChannel newChannel(String target) {
     ManagedChannel channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-
     return channel;
   }
 
@@ -87,7 +89,6 @@ public class ClientService {
    */
   public static BlockingStub newBlockingStub(ManagedChannel channel) {
     BlockingStub blockingStub = TupleSpacesGrpc.newBlockingStub(channel);
-
     return blockingStub;
   }
 
@@ -95,15 +96,15 @@ public class ClientService {
     return;
   }
 
-  public static void read() {
+  public static void read(String tuple) {
     return;
   }
 
-  public static void take() {
+  public static void take(String tuple) {
     return;
   }
 
-  public static void getTupleSpacesState() {
+  public static void getTupleSpacesState(String qualifier) {
     return;
   }
 

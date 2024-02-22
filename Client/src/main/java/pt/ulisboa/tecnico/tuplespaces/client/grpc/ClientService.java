@@ -5,12 +5,60 @@ import pt.ulisboa.tecnico.tuplespaces.*;
 
 public class ClientService {
 
-  /*TODO: The gRPC client-side logic should be here.
+  /* The gRPC client-side logic should be here.
         This should include a method that builds a channel and stub,
-        as well as individual methods for each remote operation of this service. */
+        as well as individual methods for each remote operation of this service.
+        
+        Done: channel, stub, wrappers, getters, setters, constructors
+        TODO: individual methods for each remote operation*/
 
-  public static ClientService newClientService() {
-    return new ClientService();
+  private String service_name;
+  private String target;
+
+  /**
+   * Creates a new ClientService
+   * @param target
+   * @param service_name
+   * @return
+   */
+  public static ClientService newClientService(String target, String service_name) {
+    ClientService clientService = new ClientService();
+    clientService.target = target;
+    clientService.service_name = service_name;
+
+    return clientService;
+  }
+
+  /**
+   * Gets the service name
+   * @return
+   */
+  public String getServiceName() {
+    return this.service_name;
+  }
+
+  /**
+   * Gets the target
+   * @return
+   */
+  public String getTarget() {
+    return this.target;
+  }
+
+  /**
+   * Sets the service name
+   * @param service_name
+   */
+  public void setServiceName(String service_name) {
+    this.service_name = service_name;
+  }
+
+  /**
+   * Sets the target
+   * @param target
+   */
+  public void setTarget(String target) {
+    this.target = target;
   }
 
   /**
@@ -42,5 +90,21 @@ public class ClientService {
 
     return blockingStub;
   }
-   
+
+  public static void put(String tuple) {
+    return;
+  }
+
+  public static void read() {
+    return;
+  }
+
+  public static void take() {
+    return;
+  }
+
+  public static void getTupleSpacesState() {
+    return;
+  }
+
 }

@@ -36,7 +36,9 @@ public class ClientMain {
             }
         }
 
-        CommandProcessor parser = new CommandProcessor(new ClientService());
+        String target = host + ":" + port;
+
+        CommandProcessor parser = new CommandProcessor(new ClientService(target, args[2]));
         parser.parseInput();
     }
 }

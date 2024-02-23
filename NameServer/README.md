@@ -4,22 +4,22 @@ This module contains a name server that enables clients to find servers in the T
 ## Installation
 
 ### Manual
-If you only want to get this working without running unit tests just do the following.
+Create a virtual environment and install the requirements specified in `requirements.txt` in the root directory of the TupleSpace project as follows:
 ```
 python -m virtualenv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
-Then, make sure to install the `Contract` library and it's all done.
+Then, install the `Contract` library using Maven and with the virtual environment activated.
 
 ### Package
-A easier way is to install it as a local package, which will enable running the unittests too.
+With a package installation you can also run the unittests. Simply go into the `src/name_server` directory and run.
 ```
 python -m virtualenv venv
 source venv/bin/activate
 pip install .
 ```
-Then, make sure to install the `Contract` library and it's all done.
+Then, make sure to install the `Contract` library using Maven and with the virtual environment actiavted.
 
 ## Running
 1 - Conclude the **Installation** proccess.
@@ -41,8 +41,8 @@ options:
 ```
 
 ## Testing
-If the package is installed locally, running the unit tests is fairly simple, 
-simply run the following command in the `NameServer` directory:
+If you installed using the package, running the unit tests is fairly simple.
+Simply run the following command in the `NameServer` directory:
 ```
-python -m unittest tests.test_name_server
+python -m unittest tests.test_name_server_state
 ```

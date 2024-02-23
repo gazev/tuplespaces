@@ -6,7 +6,7 @@ import static java.lang.Math.pow;
 public class ServerMain {
 
   private static boolean DEBUG_MODE = false; // debug flag
-  private static String nameServerAddr = "localhost:8080"; // hardcoded address of name server
+  private static String nameServerAddr = "localhost:5001"; // hardcoded address of name server
 
   public static void debug(String s) {
     if (DEBUG_MODE) {

@@ -16,18 +16,8 @@ public class ServerState {
     this.tuples = new ArrayList<String>();
   }
 
-  public boolean isValidTuple(String tuple) {
+  private boolean isValidTuple(String tuple) {
     return tuple.startsWith(BGN_TUPLE) && tuple.endsWith(END_TUPLE);
-  }
-
-  public void put(String tuple) throws InvalidTupleException {
-    if (!isValidTuple(tuple)) {
-      throw new InvalidTupleException(tuple);
-    }
-
-    synchronized (this) {
-      tuples.add(tuple);
-    }
   }
 
   private String getMatchingTuple(String pattern) throws InvalidSearchPatternException {
@@ -44,6 +34,17 @@ public class ServerState {
     }
     return null;
   }
+
+  public void put(String tuple) throws InvalidTupleException {
+    if (!isValidTuple(tuple)) {
+      throw new InvalidTupleException(tuple);
+    }
+
+    synchronized (this) {
+      tuples.add(tuple);
+    }
+  }
+
 
   public String read(String pattern) throws InvalidSearchPatternException {
     if (!isValidTuple(pattern)) {

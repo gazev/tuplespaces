@@ -9,8 +9,8 @@ public class ClientService {
         This should include a method that builds a channel and stub,
         as well as individual methods for each remote operation of this service.
         
-        Done: channel, stub, wrappers, getters, setters, constructors
-        TODO: individual methods for each remote operation*/
+        Done: channel, stub, wrappers, getters, setters, constructors,
+              individual methods for each remote operation */
 
   private String service_name;
   private String target;
@@ -92,20 +92,44 @@ public class ClientService {
     return blockingStub;
   }
 
-  public static void put(String tuple) {
-    return;
+  /**
+   * Calls the remote operation put
+   * @param tuple
+   * @return
+   */
+  public static String put(String tuple) {
+    String response = this.blockingStub.put(TupleRequest.newBuilder().setTuple(tuple)
+                      .build()).getResponse(); 
+
+    return response;
   }
 
-  public static void read(String tuple) {
-    return;
+  /**
+   * Calls the remote operation read
+   * @param tuple
+   * @return
+   */
+  public static String read(String tuple) {
+    String response = this.blockingStub.read(TupleRequest.newBuilder().setTuple(tuple)
+                      .build()).getResponse();
+    return response;
   }
 
-  public static void take(String tuple) {
-    return;
+  /**
+   * Calls the remote operation take
+   * @param tuple
+   * @return
+   */
+  public static String take(String tuple) {
+    String response = this.blockingStub.take(TupleRequest.newBuilder().setTuple(tuple)
+                      .build()).getResponse();
+    return response;
   }
 
-  public static void getTupleSpacesState(String qualifier) {
-    return;
+  public static String[] getTupleSpacesState(String qualifier) {
+    String[] response = this.blockingStub.getTupleSpacesState(QualifierRequest.newBuilder().
+                        setQualifier(qualifier).build()).getResponseList();
+    return response;
   }
 
 }

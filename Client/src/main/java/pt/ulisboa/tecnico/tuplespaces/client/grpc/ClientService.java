@@ -34,7 +34,7 @@ public class ClientService {
 
   /**
    * Gets the service name
-   * @return
+   * @return service name
    */
   public String getServiceName() {
     return this.service_name;
@@ -42,7 +42,7 @@ public class ClientService {
 
   /**
    * Gets the target
-   * @return
+   * @return target (host:port)
    */
   public String getTarget() {
     return this.target;
@@ -67,7 +67,7 @@ public class ClientService {
   /**
    * Creates a new channel to the target
    * @param target
-   * @return
+   * @return channel
    */
   public static ManagedChannel newChannel(String target) {
     ManagedChannel channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
@@ -93,9 +93,9 @@ public class ClientService {
   }
 
   /**
-   * Calls the remote operation put
+   * Calls the remote operation put that inserts a tuple in the tuple space
    * @param tuple
-   * @return
+   * @return the matching tuple
    */
   public static String put(String tuple) {
     String response = this.blockingStub.put(TupleRequest.newBuilder().setTuple(tuple)
@@ -105,9 +105,9 @@ public class ClientService {
   }
 
   /**
-   * Calls the remote operation read
+   * Calls the remote operation read that reads a tuple from the tuple space without removing it
    * @param tuple
-   * @return
+   * @return the matching tuple
    */
   public static String read(String tuple) {
     String response = this.blockingStub.read(TupleRequest.newBuilder().setTuple(tuple)
@@ -116,9 +116,9 @@ public class ClientService {
   }
 
   /**
-   * Calls the remote operation take
+   * Calls the remote operation take that reads a tuple from the tuple space and removes it
    * @param tuple
-   * @return
+   * @return the matching tuple
    */
   public static String take(String tuple) {
     String response = this.blockingStub.take(TupleRequest.newBuilder().setTuple(tuple)
@@ -126,6 +126,11 @@ public class ClientService {
     return response;
   }
 
+  /**
+   * Calls the remote operation query that queries the tuple space for all the tuples
+   * @param tuple
+   * @return array of tuples
+   */
   public static String[] getTupleSpacesState(String qualifier) {
     String[] response = this.blockingStub.getTupleSpacesState(QualifierRequest.newBuilder().
                         setQualifier(qualifier).build()).getResponseList();

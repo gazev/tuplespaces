@@ -80,7 +80,8 @@ public class CommandProcessor {
     String tuple = split[1];
 
     // put the tuple
-    System.out.println("TODO: implement put command");
+    String response = clientService.put(tuple);
+    System.out.println(response);
   }
 
   private void read(String[] split) {
@@ -95,7 +96,8 @@ public class CommandProcessor {
     String tuple = split[1];
 
     // read the tuple
-    System.out.println("TODO: implement read command");
+    String response = clientService.read(tuple);
+    System.out.println(response);
   }
 
   private void take(String[] split) {
@@ -109,7 +111,8 @@ public class CommandProcessor {
     String tuple = split[1];
 
     // take the tuple
-    System.out.println("TODO: implement take command");
+    String response = clientService.take(tuple);
+    System.out.println(response);
   }
 
   private void getTupleSpacesState(String[] split) {
@@ -121,7 +124,10 @@ public class CommandProcessor {
     String qualifier = split[1];
 
     // get the tuple spaces state
-    System.out.println("TODO: implement getTupleSpacesState command");
+    String[] response = clientService.getTupleSpacesState(qualifier);
+    for (String s : response) {
+      System.out.println(s);
+    }
   }
 
   private void sleep(String[] split) {

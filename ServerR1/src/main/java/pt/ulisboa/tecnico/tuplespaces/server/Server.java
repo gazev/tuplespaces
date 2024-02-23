@@ -1,11 +1,14 @@
 package pt.ulisboa.tecnico.tuplespaces.server;
 
-import io.grpc.BindableService;
-import io.grpc.ServerBuilder;
+import io.grpc.*;
 
-import pt.ulisboa.tecnico.tuplespaces.server.domain.ServerState;
 
 import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
+
+import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.*;
+import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.*;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.ServerState;
+
 
 /**
  * Class encapsulating a TupleSpaces server.
@@ -28,8 +31,11 @@ public class Server {
   private int port;
   private String service;
   private String qual;
+  private String address;
 
   private ServerState state = new ServerState();
+
+  private ManagedChannel nameServerChannel = null;
 
   /**
    * @param host Server host address
@@ -37,11 +43,12 @@ public class Server {
    * @param qual Server qualifier
    * @param service Server service name
    */
-  public Server(String host, int port, String service, String qual) {
+  public Server(String host, int port, String qual, String service) {
     this.host = host;
     this.port = port;
     this.service = service;
     this.qual = qual;
+    this.address = host + ":" + port;
   }
 
   /**
@@ -69,22 +76,49 @@ public class Server {
   }
 
   /**
-   * Registers the Server in the Name Server
-   *
-   * @param nameServerAddr string in the format host:port identifying the Name Server
-   * @throws
-   */
-  public void registerInNameServer(String nameServerAddr) {
-    debug("REGISTER");
-  }
-
-  /**
    * Unregisters the Server in the Name Server
    *
    * @param nameServerAddr string in the format host:port identifying the Name Server
    * @throws
    */
   public void unregisterInNameServer(String nameServerAddr) {
-    debug("UNREGISTER");
+    if (nameServerAddr == null) return; // already closed
+
+    NameServerGrpc.NameServerBlockingStub stub = NameServerGrpc.newBlockingStub(nameServerChannel);
+
+    try {
+      stub.delete(NameServerOuterClass.DeleteRequest.newBuilder()
+          .setAddress(address)
+          .setServiceName("TuplesSpace").build());
+    } catch (Exception e) {
+      ;
+      // do nothing because program will end
+    }
+  }
+
+  /**
+   * Registers the Server in the Name Server
+   *
+   * @param nameServerAddr string in the format host:port identifying the Name Server
+   * @throws
+   */
+  public void registerInNameServer(String nameServerAddr) {
+    nameServerChannel = ManagedChannelBuilder.forTarget(nameServerAddr).usePlaintext().build();
+    NameServerGrpc.NameServerBlockingStub stub = NameServerGrpc.newBlockingStub(nameServerChannel);
+
+    debug("Running register");
+    try {
+      NameServerOuterClass.RegisterResponse response =
+          stub.register(
+              NameServerOuterClass.RegisterRequest.newBuilder()
+                  .setAddress(address)
+                  .setIdentifier(qual)
+                  .setServiceName(service)
+                  .build());
+    } catch (StatusRuntimeException e) {
+      System.out.println("Failed registering server: " + e.getStatus().getDescription());
+    } catch (RuntimeException e) {
+      System.out.println("Failed registering server...");
+    }
   }
 }

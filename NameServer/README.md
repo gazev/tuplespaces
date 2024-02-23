@@ -13,7 +13,7 @@ pip install -r requirements.txt
 Then, install the `Contract` library using Maven and with the virtual environment activated.
 
 ### Package
-With a package installation you can also run the unittests. Simply go into the `src/name_server` directory and run.
+With a package installation you can also run the unittests. Simply go into the `src/` directory and run.
 ```
 python -m virtualenv venv
 source venv/bin/activate

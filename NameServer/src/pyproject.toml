@@ -1,0 +1,13 @@
+[project]
+name = "name_server"
+version = "0.1.0"
+description = "Name Server for Tuple Spaces distributed network"
+dependencies = [
+    'grpcio==1.60.1',
+    'grpcio-tools==1.60.1',
+    'protobuf==4.25.3'
+]
+
+[build-system]
+requires = ['setuptools>=68.0']
+build-backend = 'setuptools.build_meta'

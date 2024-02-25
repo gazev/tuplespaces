@@ -5,11 +5,14 @@ import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc.Tuple
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import io.grpc.stub.StreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.ServerState;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidSearchPatternException;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidTupleException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
+
+import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
 
 public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
-  private ServerState tuplesSpace;
+  private final ServerState tuplesSpace;
 
   public TuplesSpaceServiceImpl(ServerState state) {
     this.tuplesSpace = state;
@@ -19,12 +22,15 @@ public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
   public void put(PutRequest request, StreamObserver<PutResponse> streamObserver) {
     try {
       tuplesSpace.put(request.getNewTuple());
-    } catch (InvalidTupleException e) {
+    } catch (InvalidInputTupleStringException e) {
+      debug(e.getMessage());
+      System.err.println("[ERROR] Got invalid tuple " + request.getNewTuple());
       streamObserver.onError(
           Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
       return;
     }
 
+    System.out.println("[INFO] " + String.format("Ran 'put' on %s", request.getNewTuple()));
     streamObserver.onNext(PutResponse.getDefaultInstance());
     streamObserver.onCompleted();
   }
@@ -34,12 +40,15 @@ public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
     String readTuple;
     try {
       readTuple = tuplesSpace.read(request.getSearchPattern());
-    } catch (InvalidSearchPatternException e) {
+    } catch (InvalidInputSearchPatternException e) {
+      debug(e.getMessage());
+      System.err.println("[ERROR] Got invalid search pattern " + request.getSearchPattern());
       streamObserver.onError(
           Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
       return;
     }
 
+    System.out.println("[INFO] " + String.format("Ran 'read' on %s", request.getSearchPattern()));
     streamObserver.onNext(ReadResponse.newBuilder().setResult(readTuple).build());
     streamObserver.onCompleted();
   }
@@ -48,13 +57,16 @@ public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
   public void take(TakeRequest request, StreamObserver<TakeResponse> streamObserver) {
     String takenTuple;
     try {
-      takenTuple = tuplesSpace.read(request.getSearchPattern());
-    } catch (InvalidSearchPatternException e) {
+      takenTuple = tuplesSpace.take(request.getSearchPattern());
+    } catch (InvalidInputSearchPatternException e) {
+      debug(e.getMessage());
+      System.err.println("[ERROR] Got invalid search pattern " + request.getSearchPattern());
       streamObserver.onError(
           Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asRuntimeException());
       return;
     }
 
+    System.out.println("[INFO] " + String.format("Ran 'take' on %s", request.getSearchPattern()));
     streamObserver.onNext(TakeResponse.newBuilder().setResult(takenTuple).build());
     streamObserver.onCompleted();
   }
@@ -69,6 +81,7 @@ public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
             .addAllTuple(tuplesSpace.getTupleSpacesState())
             .build();
 
+    System.out.println("[INFO] Ran 'getTupleSpaces'");
     streamObserver.onNext(response);
     streamObserver.onCompleted();
   }

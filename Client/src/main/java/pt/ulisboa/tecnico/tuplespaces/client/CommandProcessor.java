@@ -1,8 +1,14 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.ClientService;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceRPCFailureException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 
+import java.util.List;
 import java.util.Scanner;
+
+import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 public class CommandProcessor {
 
@@ -69,7 +75,6 @@ public class CommandProcessor {
   }
 
   private void put(String[] split) {
-
     // check if input is valid
     if (!this.inputIsValid(split)) {
       this.printUsage();
@@ -80,12 +85,16 @@ public class CommandProcessor {
     String tuple = split[1];
 
     // put the tuple
-    String response = clientService.put(tuple);
-    System.out.println(response);
+    try {
+      clientService.put(tuple);
+    } catch (ClientServiceException e) {
+      System.out.println(e.getMessage());
+      return;
+    }
+    System.out.println("OK");
   }
 
   private void read(String[] split) {
-    System.out.println("read function");
     // check if input is valid
     if (!this.inputIsValid(split)) {
       this.printUsage();
@@ -96,7 +105,14 @@ public class CommandProcessor {
     String tuple = split[1];
 
     // read the tuple
-    String response = clientService.read(tuple);
+    String response;
+    try {
+      response = clientService.read(tuple);
+    } catch (ClientServiceException e) {
+      System.out.println(e.getMessage());
+      return;
+    }
+    System.out.println("OK");
     System.out.println(response);
   }
 
@@ -110,24 +126,37 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
+    String response;
     // take the tuple
-    String response = clientService.take(tuple);
+    try {
+      response = clientService.take(tuple);
+    } catch (ClientServiceException e) {
+      System.out.println(e.getMessage());
+      return;
+    }
+
+    System.out.println("OK");
     System.out.println(response);
   }
 
   private void getTupleSpacesState(String[] split) {
-
     if (split.length != 2) {
       this.printUsage();
       return;
     }
-    String qualifier = split[1];
+    // String qualifier = split[1];
 
     // get the tuple spaces state
-    String[] response = clientService.getTupleSpacesState(qualifier);
-    for (String s : response) {
-      System.out.println(s);
+    String responseStr;
+    try {
+      responseStr = clientService.getTupleSpacesState();
+    } catch (ClientServiceException e) {
+      System.out.println(e.getMessage());
+      return;
     }
+
+    System.out.println("OK");
+    System.out.println(responseStr);
   }
 
   private void sleep(String[] split) {
@@ -135,9 +164,9 @@ public class CommandProcessor {
       this.printUsage();
       return;
     }
-    Integer time;
 
     // checks if input String can be parsed as an Integer
+    long time;
     try {
       time = Integer.parseInt(split[1]);
     } catch (NumberFormatException e) {
@@ -158,7 +187,7 @@ public class CommandProcessor {
       return;
     }
     String qualifier = split[1];
-    Integer time;
+    int time;
 
     // checks if input String can be parsed as an Integer
     try {

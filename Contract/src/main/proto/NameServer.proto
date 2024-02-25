@@ -3,15 +3,20 @@ package pt.ulisboa.tecnico.tuplespaces.nameserver.contract;
 
 message LookupRequest {
     string ServiceName = 1;
+    string Qualifier = 2;
 }
 
 message LookupResponse {
-    repeated string ServiceAddress = 1;
+    message ServiceEntry {
+        string Qualifier = 1;
+        string ServiceAddress = 2;
+    }
+    repeated ServiceEntry ServiceEntries = 1;
 }
 
 message RegisterRequest {
     string ServiceName = 1;
-    string Identifier = 2;
+    string Qualifier = 2;
     string Address = 3;
 }
 
@@ -22,7 +27,6 @@ message RegisterResponse {
 message DeleteRequest {
     string ServiceName = 1;
     string Address = 2;
-
 }
 
 message DeleteResponse {
@@ -31,6 +35,6 @@ message DeleteResponse {
 
 service NameServer {
     rpc Register(RegisterRequest) returns (RegisterResponse);
-    rpc Lookup(LookupRequest) returns (LookupRequest);
+    rpc Lookup(LookupRequest) returns (LookupResponse);
     rpc Delete(DeleteRequest) returns (DeleteResponse);
 }

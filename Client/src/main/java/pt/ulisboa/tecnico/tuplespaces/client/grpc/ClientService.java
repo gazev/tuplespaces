@@ -1,140 +1,150 @@
 package pt.ulisboa.tecnico.tuplespaces.client.grpc;
+import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import io.grpc.ManagedChannel;
-import pt.ulisboa.tecnico.tuplespaces.client;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.StatusRuntimeException;
+import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized;
+import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceRPCFailureException;
 
+import java.util.List;
+
+/**
+ * ClientService class encapsulates the gRPC interface of the TupleSpaces service client.
+ */
 public class ClientService {
 
-  /* The gRPC client-side logic should be here.
-        This should include a method that builds a channel and stub,
-        as well as individual methods for each remote operation of this service.
-        
-        Done: channel, stub, wrappers, getters, setters, constructors,
-              individual methods for each remote operation */
+  /**
+   * ServerService class represents a gRPC server of the TupleSpaces service
+   */
+  public static class ServerService {
+    public final String address;
+    public final String qualifier;
+    public ManagedChannel channel;
+    public TupleSpacesGrpc.TupleSpacesBlockingStub stub;
 
-  private String service_name;
-  private String target;
-  private ManagedChannel channel;
-  private BlockingStub blockingStub;
+    public ServerService(String address, String qualifier) {
+      this.address = address;
+      this.qualifier = qualifier;
+    }
+
+    /**
+     * Create channel and stub for given server
+     */
+    public void connect() {
+      debug("Call ServerService.connect");
+      this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
+      this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
+    }
+
+    /**
+     * Server shutdown logic
+     */
+    public void shutdown() {
+      debug("Call ServerService.shutdown");
+      channel.shutdown();
+    }
+  }
+
+  final private String serviceName; // service name, (e.g, TupleSpaces)
+  // list of currently known active servers
+  final private ServerService server;  // server we are talking to, only one now, TODO probably a list on 2nd delivery
 
   /**
-   * Creates a new ClientService
-   * @param target
-   * @param service_name
-   * @return
+   * @param serviceName service name, (e.g TupleSpaces)
+   * @param serverEntries available servers fetched from name server
    */
-  public static ClientService newClientService(String target, String service_name) {
-    ClientService clientService = new ClientService();
-    clientService.target = target;
-    clientService.service_name = service_name;
-    clientService.channel = newChannel(target);
-    clientService.blockingStub = newBlockingStub(this.channel);
-    return clientService;
+  public ClientService (String serviceName, List<NameServerService.ServiceEntry> serverEntries) {
+    this.serviceName = serviceName;
+    this.server = new ServerService(serverEntries.get(0).getAddress(), serverEntries.get(0).getQualifier()); // TODO first delivery only 1 server
+    this.server.connect();
   }
 
   /**
-   * Gets the service name
-   * @return service name
+   * Perform shutdown logic
    */
-  public String getServiceName() {
-    return this.service_name;
+  public void shutdown() {
+    debug("Call ClientService.shutdown");
+    if (server != null) server.shutdown();
   }
 
   /**
-   * Gets the target
-   * @return target (host:port)
+   * 'put' gRPC wrapper.
+   *
+   * @param tuple put procedure argument
+   * @throws ClientServiceRPCFailureException on RPC failure
    */
-  public String getTarget() {
-    return this.target;
+  public void put(String tuple) throws ClientServiceRPCFailureException {
+    debug("Call ClientService.put: tuple=" + tuple);
+    try {
+      server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
+    } catch (StatusRuntimeException e) {
+      debug(e.getMessage());
+      throw new ClientServiceRPCFailureException("Put", e.getStatus().getDescription());
+    }
   }
 
   /**
-   * Sets the service name
-   * @param service_name
+   * 'read' gRPC wrapper.
+   *
+   * @param searchPattern read procedure argument
+   * @return string of the operation result
+   *
+   * @throws ClientServiceRPCFailureException on RPC failure
    */
-  public void setServiceName(String service_name) {
-    this.service_name = service_name;
+  public String read(String searchPattern) throws ClientServiceRPCFailureException {
+    debug("Call ClientService.read: searchPattern=" + searchPattern);
+    TupleSpacesCentralized.ReadResponse response = null;
+    try {
+      response = server.stub.read(TupleSpacesCentralized.ReadRequest.newBuilder().setSearchPattern(searchPattern).build());
+    } catch (StatusRuntimeException e) {
+      debug(e.getMessage());
+      throw new ClientServiceRPCFailureException("Read", e.getStatus().getDescription());
+    }
+    // return first result
+    return response.getResult();
   }
 
   /**
-   * Sets the target
-   * @param target
+   * 'take' gRPC wrapper.
+   *
+   * @param searchPattern take procedure argument
+   * @return string of the operation result
+   *
+   * @throws ClientServiceRPCFailureException on RPC failure
    */
-  public void setTarget(String target) {
-    this.target = target;
+  public String take(String searchPattern) throws ClientServiceRPCFailureException {
+    debug("Call ClientService.take: searchPattern=" + searchPattern);
+    TupleSpacesCentralized.TakeResponse response = null;
+    try {
+      response = server.stub.take(TupleSpacesCentralized.TakeRequest.newBuilder().setSearchPattern(searchPattern).build());
+    } catch (StatusRuntimeException e) {
+      debug(e.getMessage());
+      throw new ClientServiceRPCFailureException("Take", e.getStatus().getDescription());
+    }
+    // return first result
+    return response.getResult();
   }
 
   /**
-   * Creates a new channel to the target
-   * @param target
-   * @return channel
+   * 'getTupleSpacesState' gRPC wrapper.
+   *
+   * @return string of the operation result
+   *
+   * @throws ClientServiceRPCFailureException on RPC failure
    */
-  public static ManagedChannel newChannel(String target) {
-    ManagedChannel channel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
-    return channel;
+  public String getTupleSpacesState() throws ClientServiceRPCFailureException {
+    debug("Call ClientService.getTupleSpacesState");
+    TupleSpacesCentralized.getTupleSpacesStateResponse response = null;
+    try {
+      response = server.stub.getTupleSpacesState(TupleSpacesCentralized.getTupleSpacesStateRequest.getDefaultInstance());
+    } catch (StatusRuntimeException e) {
+      debug(e.getStatus().getDescription());
+      throw new ClientServiceRPCFailureException("GetTupleSpacesState", e.getStatus().getDescription());
+    }
+
+    // return first result
+    return response.getTupleList().toString();
   }
-
-  /**
-   * Shuts down the channel
-   * @param channel
-   */
-  public static void shutdownChannel(ManagedChannel channel) {
-    channel.shutdownNow();
-  }
-
-  /**
-   * Creates a new blocking stub
-   * @param channel
-   * @return
-   */
-  public static BlockingStub newBlockingStub(ManagedChannel channel) {
-    BlockingStub blockingStub = TupleSpacesGrpc.newBlockingStub(channel);
-    return blockingStub;
-  }
-
-  /**
-   * Calls the remote operation put that inserts a tuple in the tuple space
-   * @param tuple
-   * @return the matching tuple
-   */
-  public static String put(String tuple) {
-    String response = this.blockingStub.put(TupleRequest.newBuilder().setTuple(tuple)
-                      .build()).getResponse(); 
-
-    return response;
-  }
-
-  /**
-   * Calls the remote operation read that reads a tuple from the tuple space without removing it
-   * @param tuple
-   * @return the matching tuple
-   */
-  public static String read(String tuple) {
-    String response = this.blockingStub.read(TupleRequest.newBuilder().setTuple(tuple)
-                      .build()).getResponse();
-    return response;
-  }
-
-  /**
-   * Calls the remote operation take that reads a tuple from the tuple space and removes it
-   * @param tuple
-   * @return the matching tuple
-   */
-  public static String take(String tuple) {
-    String response = this.blockingStub.take(TupleRequest.newBuilder().setTuple(tuple)
-                      .build()).getResponse();
-    return response;
-  }
-
-  /**
-   * Calls the remote operation query that queries the tuple space for all the tuples
-   * @param tuple
-   * @return array of tuples
-   */
-  public static String[] getTupleSpacesState(String qualifier) {
-    String[] response = this.blockingStub.getTupleSpacesState(QualifierRequest.newBuilder().
-                        setQualifier(qualifier).build()).getResponseList();
-    return response;
-  }
-
 }

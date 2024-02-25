@@ -1,7 +1,7 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidSearchPatternException;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidTupleException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,34 +10,52 @@ public class ServerState {
   private static final String BGN_TUPLE = "<";
   private static final String END_TUPLE = ">";
 
-  private List<String> tuples;
+  private final List<String> tuples;
 
   public ServerState() {
-    this.tuples = new ArrayList<String>();
+    this.tuples = new ArrayList<>();
   }
 
-  private boolean isValidTuple(String tuple) {
-    return tuple.startsWith(BGN_TUPLE) && tuple.endsWith(END_TUPLE);
+  /**
+   * Determine if given tuple or search pattern is Invalid
+   *
+   * @param tuple tuple or search pattern to be tested
+   * @return true if given tuple or search pattern is invalid
+   */
+  public static boolean isInvalidTuple(String tuple) {
+    return !tuple.startsWith(BGN_TUPLE) || !tuple.endsWith(END_TUPLE);
   }
 
-  private String getMatchingTuple(String pattern) throws InvalidSearchPatternException {
-    if (!isValidTuple(pattern)) {
-      throw new InvalidSearchPatternException(pattern);
+  /**
+   * Get a tuple from the TupleSpace matching the given pattern.
+   *
+   * @param pattern search pattern
+   * @return tuple matching the search pattern
+   * @throws InvalidInputSearchPatternException if given search pattern is invalid
+   */
+  private String getMatchingTuple(String pattern) throws InvalidInputSearchPatternException {
+    if (isInvalidTuple(pattern)) {
+      throw new InvalidInputSearchPatternException(pattern);
     }
 
-    synchronized (this) {
-      for (String tuple : this.tuples) {
-        if (tuple.matches(pattern)) {
-          return tuple;
-        }
+    for (String t : this.tuples) {
+      if (t.matches(pattern)) {
+        return t;
       }
     }
-    return null;
+
+    return null; // remove this when blocking done
   }
 
-  public void put(String tuple) throws InvalidTupleException {
-    if (!isValidTuple(tuple)) {
-      throw new InvalidTupleException(tuple);
+  /**
+   * Put given tuple in the TupleSpaces.
+   *
+   * @param tuple new tuple to be added.
+   * @throws InvalidInputTupleStringException if given tuple is invalid
+   */
+  public void put(String tuple) throws InvalidInputTupleStringException {
+    if (isInvalidTuple(tuple)) {
+      throw new InvalidInputTupleStringException(tuple);
     }
 
     synchronized (this) {
@@ -45,10 +63,16 @@ public class ServerState {
     }
   }
 
-
-  public String read(String pattern) throws InvalidSearchPatternException {
-    if (!isValidTuple(pattern)) {
-      throw new InvalidSearchPatternException(pattern);
+  /**
+   * Read a tuple from the TupleSpaces matching the given pattern.
+   *
+   * @param pattern to be matched
+   * @return desired tuple
+   * @throws InvalidInputSearchPatternException if given pattern is invalid
+   */
+  public String read(String pattern) throws InvalidInputSearchPatternException {
+    if (isInvalidTuple(pattern)) {
+      throw new InvalidInputSearchPatternException(pattern);
     }
 
     synchronized (this) {
@@ -56,9 +80,16 @@ public class ServerState {
     }
   }
 
-  public String take(String pattern) throws InvalidSearchPatternException {
-    if (!isValidTuple(pattern)) {
-      throw new InvalidSearchPatternException(pattern);
+  /**
+   * Remove and read a tuple from the TupleSpaces that matches the given pattern.
+   *
+   * @param pattern to be matched
+   * @return desired tuple
+   * @throws InvalidInputSearchPatternException if given pattern is invalid
+   */
+  public String take(String pattern) throws InvalidInputSearchPatternException {
+    if (isInvalidTuple(pattern)) {
+      throw new InvalidInputSearchPatternException(pattern);
     }
 
     synchronized (this) {
@@ -68,6 +99,11 @@ public class ServerState {
     }
   }
 
+  /**
+   * Get a list of all tuples in the TupleSpaces.
+   *
+   * @return List of all tuples.
+   */
   public synchronized List<String> getTupleSpacesState() {
     return tuples;
   }

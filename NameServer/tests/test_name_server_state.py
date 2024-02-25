@@ -68,10 +68,10 @@ class TestSimpleNameServer(unittest.TestCase):
         self.assertNotEqual(self.ns.lookup('TupleSpace', 'A'), [])
 
     def test_lookup_true_entry(self):
-        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), ['localhost:8000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), [ServiceEntry(qual='A', addr='localhost:8000')])
 
     def test_lookup_false_entry(self):
-        self.assertNotEqual(self.ns.lookup('TupleSpace', 'A'), ['localhost:8001'])
+        self.assertNotEqual(self.ns.lookup('TupleSpace', 'A'), [ServiceEntry(qual='A', addr='localhost:8001')])
 
     def test_lookup_false_name(self):
         self.assertEqual(self.ns.lookup('InvalidName', 'A'), [])
@@ -83,7 +83,7 @@ class TestSimpleNameServer(unittest.TestCase):
         self.assertEqual(self.ns.lookup('InvalidName', 'B'), [])
     
     def test_lookup_true_name_only(self):
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:8000')])
 
     def test_lookup_false_name(self):
         self.assertEqual(self.ns.lookup('InvalidName', ''), [])
@@ -104,7 +104,7 @@ class TestSimpleNameServer(unittest.TestCase):
         except (InvalidServiceEntry, InvalidRegisterRequest) as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8000', 'localhost:8001'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:8000'), ServiceEntry(qual='B', addr='localhost:8001')])
 
     def test_register_n_lookup_2(self):
         try:
@@ -113,7 +113,7 @@ class TestSimpleNameServer(unittest.TestCase):
         except (InvalidServiceEntry, InvalidRegisterRequest) as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8000', 'localhost:8001', 'localhost:8002'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:8000'), ServiceEntry(qual='B', addr='localhost:8001'), ServiceEntry(qual='C', addr='localhost:8002')])
 
     def test_register_n_lookup_3(self):
         try:
@@ -122,9 +122,9 @@ class TestSimpleNameServer(unittest.TestCase):
         except (InvalidServiceEntry, InvalidRegisterRequest) as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('TupleSpace', 'C'), ['localhost:8002'])
-        self.assertEqual(self.ns.lookup('TupleSpace', 'B'), ['localhost:8001'])
-        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), ['localhost:8000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'C'), [ServiceEntry(qual='C', addr='localhost:8002')])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'B'), [ServiceEntry(qual='B', addr='localhost:8001')])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), [ServiceEntry(qual='A', addr='localhost:8000')])
 
     def test_register_invalid(self):
         try:
@@ -134,7 +134,7 @@ class TestSimpleNameServer(unittest.TestCase):
             pass
 
         self.assertEqual(self.ns.lookup('TupleSpace', 'C'), [])
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:8000')])
 
     def test_register_new_name(self):
         try:
@@ -142,9 +142,9 @@ class TestSimpleNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f"Unexpected exception {str(e)}")
         
-        self.assertEqual(self.ns.lookup('NewName', ''), ['localhost:9000'])
+        self.assertEqual(self.ns.lookup('NewName', ''), [ServiceEntry(qual='A', addr='localhost:9000')])
         self.assertEqual(self.ns.lookup('NewName', 'B'), [])
-        self.assertEqual(self.ns.lookup('NewName', 'A'), ['localhost:9000'])
+        self.assertEqual(self.ns.lookup('NewName', 'A'), [ServiceEntry(qual='A', addr='localhost:9000')])
     
     def test_register_duplicate(self):
         try:
@@ -176,8 +176,8 @@ class TestSimpleNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f'Unexpected exception {str(e)}')
 
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8000'])
-        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), ['localhost:8000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:8000')])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), [ServiceEntry(qual='A', addr='localhost:8000')])
 
     def test_delete_all(self):
         try:
@@ -186,7 +186,7 @@ class TestSimpleNameServer(unittest.TestCase):
             self.fail(f'Unexpected exception {str(e)}')
 
         self.ns.delete('TupleSpace', 'localhost:8000')
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:8001'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='B', addr='localhost:8001')])
         self.ns.delete('TupleSpace', 'localhost:8001')
         self.assertEqual(self.ns.lookup('TupleSpace', ''), [])
 
@@ -196,14 +196,14 @@ class TestSimpleNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f'Unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), ['localhost:8000', 'localhost:9000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', 'A'), [ServiceEntry(qual='A', addr='localhost:8000'),  ServiceEntry(qual='A', addr='localhost:9000')])
 
         try:
             self.ns.delete('TupleSpace', 'localhost:8000')
         except Exception:
             self.fail(f'Unexpected exception {str(e)}')
 
-        self.assertEqual(self.ns.lookup('TupleSpace', ''), ['localhost:9000'])
+        self.assertEqual(self.ns.lookup('TupleSpace', ''), [ServiceEntry(qual='A', addr='localhost:9000')])
         
 
 class TestListsNameServer(unittest.TestCase):
@@ -227,10 +227,10 @@ class TestListsNameServer(unittest.TestCase):
                 raise 
     
     def test_lookup_name_tuple(self):
-        self.assertEqual(self.ns.lookup('Tuple', ''), [r[2] for r in self.__records[0:3]])
+        self.assertEqual(self.ns.lookup('Tuple', ''), [ServiceEntry(qual=r[1], addr=r[2]) for r in self.__records[0:3]])
 
     def test_lookup_name(self):
-        self.assertEqual(self.ns.lookup('Foo1', ''), [self.__records[3][2]])
+        self.assertEqual(self.ns.lookup('Foo1', ''), [ServiceEntry(qual='Z', addr='localhost:8083')])
 
     def test_lookup_name_invalid_qual(self):
         self.assertEqual(self.ns.lookup('Foo1', 'A'), [])
@@ -241,7 +241,7 @@ class TestListsNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('Tuple', ''), ['localhost:8080', 'localhost:8081'])
+        self.assertEqual(self.ns.lookup('Tuple', ''), [ServiceEntry(qual='A', addr='localhost:8080'), ServiceEntry(qual='B', addr='localhost:8081')])
 
     def test_delete_unexistant(self):
         try:
@@ -251,7 +251,7 @@ class TestListsNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('Tuple', ''), ['localhost:8080', 'localhost:8081', 'localhost:8082'])
+        self.assertEqual(self.ns.lookup('Tuple', ''), [ServiceEntry(qual='A', addr='localhost:8080'), ServiceEntry(qual='B', addr='localhost:8081'), ServiceEntry(qual='C', addr='localhost:8082')])
 
     def test_register_duplicate(self):
         try:
@@ -261,7 +261,7 @@ class TestListsNameServer(unittest.TestCase):
         except Exception as e:
             self.fail(f'Got unexpected exception {str(e)}')
         
-        self.assertEqual(self.ns.lookup('Tuple', ''), ['localhost:8080', 'localhost:8081', 'localhost:8082'])
+        self.assertEqual(self.ns.lookup('Tuple', ''), [ServiceEntry(qual='A', addr='localhost:8080'), ServiceEntry(qual='B', addr='localhost:8081'), ServiceEntry(qual='C', addr='localhost:8082')])
 
 if __name__ == '__main__':
     unittest.main(failfast=True)

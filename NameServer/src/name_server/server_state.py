@@ -92,11 +92,11 @@ class NameServerState:
         # get all service entries with given name and qual 
         if name and qual:
             # return list of all service entries addresses that match requested name and qualifier
-            return [entry.addr for entry in self._name_lookup_table[name] if entry.qual == qual]
+            return [entry for entry in self._name_lookup_table[name] if entry.qual == qual]
         
         # get all service entries with given name (qual not specified)
         if name:
-            return [entry.addr for entry in self._name_lookup_table[name]]
+            return self._name_lookup_table[name]
         
         # no name specified (not normal behaviour)
         return []

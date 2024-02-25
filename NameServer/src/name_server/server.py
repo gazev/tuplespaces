@@ -1,6 +1,7 @@
 import sys
 import argparse
 from concurrent import futures
+import traceback
 
 sys.path += ['../../../Contract/target/generated-sources/protobuf/python']
 
@@ -35,17 +36,26 @@ class NameServer(pb2_grpc.NameServerServicer):
         self.state = NameServerState() # internal state
     
     def Lookup(self, request, ctx):
-        debug("Running Lookup procedure" + \
-            f"Arguments: ServiceName: {request.ServiceName}; Qualifier: {request.Qualifier}")
         """ Lookup RPC, see pt.ulisboa.tecnico.tuplespaces.nameserver """
-        return pb2.LookUpResponse(ServiceAddress=self.state.lookup(request.ServiceName))
+        debug("Running Lookup procedure. " + \
+            f"Arguments: ServiceName={request.ServiceName}, Qualifier={request.Qualifier}")
+
+        # build list of ServiceEntries response (list of tuples with a qualifier and address)
+        entries = self.state.lookup(request.ServiceName, request.Qualifier)
+
+        entries_response = [
+            pb2.LookupResponse.ServiceEntry(Qualifier=entry.qual, ServiceAddress=entry.addr)
+            for entry in entries 
+        ]
+
+        return pb2.LookupResponse(ServiceEntries=entries_response)
     
     def Register(self, request, ctx):
         """ Register RPC, see pt.ulisboa.tecnico.tuplespaces.nameserver """
-        debug("Runnig Register procedure" + \
-            f"Arguments: ServiceName {request.ServiceName}; Qualifier {request.Qualifier}; Address {request.Address}")
+        debug("Running Register procedure. " + \
+            f"Arguments: ServiceName={request.ServiceName}, Qualifier={request.Qualifier}, address={request.Address}")
         try:
-            self.state.register(request.ServiceName, request.Identifier, request.Address)
+            self.state.register(request.ServiceName, request.Qualifier, request.Address)
         except InvalidServiceEntry as e: # invalid params
             debug(f"InvalidServiceEntry {str(e)}")
             return ctx.abort(grpc.StatusCode.INVALID_ARGUMENT, REGISTER_ERROR_MESSAGE)
@@ -53,23 +63,24 @@ class NameServer(pb2_grpc.NameServerServicer):
             debug(f"InvalidRegisterRequest {str(e)}")
             return ctx.abort(grpc.StatusCode.ALREADY_EXISTS, REGISTER_ERROR_MESSAGE)
         
-        debug(f"Registered new service: ServiceName {request.ServiceName}; Qualifier: {request.Identifier}; Address: {request.Address}")
+        debug(f"Registered new service: ServiceName={request.ServiceName}, Qualifier={request.Qualifier}, Address={request.Address}")
         return pb2.RegisterResponse()
 
     def Delete(self, request, ctx):
-        debug("Running Delete procedure" + \
-            f"Arguments: ServiceName {request.ServiceName}; Address {request.Address}")
         """ Delete RPC, see pt.ulisboa.tecnico.tuplespaces.nameserver """
+        debug("Running Delete procedure. " + \
+            f"Arguments: ServiceName={request.ServiceName}, Address={request.Address}")
         try:
             self.state.delete(request.ServiceName, request.Address)
         except InvalidServiceEntry as e: # invalid params
             debug(f"InvalidServiceEntry {str(e)}")
             return ctx.abort(grpc.StatusCode.INVALID_ARGUMENT, DELETE_ERROR_MESSAGE)
         except InvalidDeleteRequest as e: # service entry doesn't exist
-            debug(f"InvalidRegisterRequest {str(e)}")
+            debug(f"InvalidDeleteRequest {str(e)}")
             return ctx.abort(grpc.StatusCode.NOT_FOUND, DELETE_ERROR_MESSAGE)
         
-        debug(f"Deleted service: ServiceName {request.ServiceName}; Qualifier: {request.Qualifier}; Address: {request.Address}")
+        debug(f"Deleted service: ServiceName={request.ServiceName}, Address={request.Address}")
+        return pb2.DeleteResponse()
     
     def run(self, port: int):
         """ Program's entry point, runs gRPC NameServer service on port ``port`` """

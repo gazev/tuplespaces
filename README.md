@@ -42,7 +42,7 @@ can too -- just downgrade the version in the POMs.
 
 To confirm that you have them installed and which versions they are, run in the terminal:
 
-```ss
+```sh
 javac -version
 mvn -version
 ```
@@ -66,14 +66,17 @@ First create a Python virtual environment and activate it running the following 
 python -m virtualenv venv
 source venv/bin/activate
 ```
-Keep the virtual environment activated for the entire installation proccess.
+Keep the virtual environment activated for the entire installation process.
 
-Now, navigate to the `NameServer/src` folder and install the `name_server` package (this will also install the protobuf and gRPC dependencies) running in the terminal:
+---
+
+Now, navigate to the `NameServer/src` directory and install the `name_server` package (this will also install the protobuf and gRPC dependencies) running in the terminal:
 ```
 pip install .
 ```
+---
 
-Once the Python dependencies are installed, install the `Contract` module. Go into the `Contract/` folder and run the following command:
+Once the Python dependencies are installed, install the `Contract` module. Go into the `Contract/` directory and run the following command:
 ```sh
 mvn install exec:exec
 ```
@@ -81,19 +84,19 @@ mvn install exec:exec
 Now the libraries are ready and each module can be compiled and ran individually.
 
 #### Client
-Inside the `Client/` folder run:
+Inside the `Client/` directory run:
 ```sh
 mvn install 
 ```
 
 #### Server
-Inside the `ServerR1/` folder run:
+Inside the `ServerR1/` directory run:
 ```sh
 mvn install 
 ```
 
 #### NameServer
-The name server was already installed with the previous `pip install .` command. To run it, simply keep the virtual environment activated and run the following command inside the `NameServer/src/name_server/` folder:
+The name server was already installed with the previous `pip install .` command. To run it, simply keep the virtual environment activated and run the following command inside the `NameServer/src/name_server/` directory:
 ```s
 python server.py
 ```

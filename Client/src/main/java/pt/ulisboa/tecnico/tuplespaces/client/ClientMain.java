@@ -18,7 +18,7 @@ public class ClientMain {
 
   private static void printUsage() {
     System.out.println(
-        "Usage: mvn:exec -Dexec.args=\"<service> [-h] [-d]\"\n"
+        "Usage: mvn exec:java -Dexec.args=\"<service> [-h] [-d]\"\n"
             + "\n"
             + "Client for TupleSpace distributed network\n"
             + "\n"

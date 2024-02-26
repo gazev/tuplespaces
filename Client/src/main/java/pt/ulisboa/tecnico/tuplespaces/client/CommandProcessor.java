@@ -209,7 +209,7 @@ public class CommandProcessor {
 
   private boolean inputIsValid(String[] input) {
     if (input.length < 2
-        || !input[1].substring(0, 1).equals(BGN_TUPLE)
+        || !input[1].startsWith(BGN_TUPLE)
         || !input[1].endsWith(END_TUPLE)
         || input.length > 2) {
       this.printUsage();

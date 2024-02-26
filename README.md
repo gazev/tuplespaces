@@ -42,21 +42,65 @@ can too -- just downgrade the version in the POMs.
 
 To confirm that you have them installed and which versions they are, run in the terminal:
 
-```s
+```ss
 javac -version
 mvn -version
 ```
 
+
+The Project was also developed using Python 3.11.7, pip 24.0 and a Python virtual environment module. Higher versions of Python are expected to work, if not, you can use `pyenv`. 
+
+To confirm that you have them installed and which version they are, run in the terminal:
+```sh
+python --version # or python3 --version
+python -m pip --version
+python -m virtualenv --version
+```
+
 ### Installation
 
-To compile and install all modules:
+First and foremost, the protocol buffer and gRPC classes must be generated. Because we have a Python module using gRPC, we will need the `protobuf` and `grpcio` Python dependencies installed.
 
+First create a Python virtual environment and activate it running the following commands:
+```sh
+python -m virtualenv venv
+source venv/bin/activate
+```
+Keep the virtual environment activated for the entire installation proccess.
+
+Now, navigate to the `NameServer/src` folder and install the `name_server` package (this will also install the protobuf and gRPC dependencies) running in the terminal:
+```
+pip install .
+```
+
+Once the Python dependencies are installed, install the `Contract` module. Go into the `Contract/` folder and run the following command:
+```sh
+mvn install exec:exec
+```
+
+Now the libraries are ready and each module can be compiled and ran individually.
+
+#### Client
+Inside the `Client/` folder run:
+```sh
+mvn install 
+```
+
+#### Server
+Inside the `ServerR1/` folder run:
+```sh
+mvn install 
+```
+
+#### NameServer
+The name server was already installed with the previous `pip install .` command. To run it, simply keep the virtual environment activated and run the following command inside the `NameServer/src/name_server/` folder:
 ```s
-mvn clean install
+python server.py
 ```
 
 ## Built With
 
 * [Maven](https://maven.apache.org/) - Build and dependency management tool;
 * [gRPC](https://grpc.io/) - RPC framework.
+* [pip](https://pypi.org/project/pip/) - Python package manager
 

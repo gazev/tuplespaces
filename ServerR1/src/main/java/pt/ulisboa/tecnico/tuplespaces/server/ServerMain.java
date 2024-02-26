@@ -1,16 +1,12 @@
 package pt.ulisboa.tecnico.tuplespaces.server;
 
-import pt.ulisboa.tecnico.tuplespaces.server.Server;
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.ServerException;
 import pt.ulisboa.tecnico.tuplespaces.server.exceptions.ServerRegisterException;
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.ServerUnregisterException;
 import pt.ulisboa.tecnico.tuplespaces.server.grpc.NameServerService;
 
-import static java.lang.Math.abs;
 import static java.lang.Math.pow;
 
 public class ServerMain {
-  private static final String serviceName = "TupleSpaces"; // service name
+  private static final String serviceName = "TupleSpaces";       // service name (invariant)
   private static final String nameServerAddr = "localhost:5001"; // hardcoded address of name server
   private static boolean DEBUG_MODE = false; // debug flag
 
@@ -25,9 +21,7 @@ public class ServerMain {
     }
   }
 
-  /**
-   * Print program's usage message
-   */
+  /** Print program's usage message */
   private static void printUsage() {
     System.out.println(
         "Usage: mvn exec:java -Dexec.args=\"<port> [-h] [-d]\"\n"
@@ -91,9 +85,9 @@ public class ServerMain {
   /**
    * Run a new server instance.
    *
-   * @param host server host address    (e.g, "localhost")
-   * @param port server port            (e.g, 2001)
-   * @param qual server qualifier       (e.g, "A")
+   * @param host server host address (e.g, "localhost")
+   * @param port server port (e.g, 2001)
+   * @param qual server qualifier (e.g, "A")
    * @param service server service name (e.g, TupleSpaces)
    */
   public static void run(String host, int port, String qual, String service) {
@@ -110,9 +104,10 @@ public class ServerMain {
       server.register();
     } catch (ServerRegisterException e) {
       debug(e.getMessage());
-      System.err.println("[WARN] Failed registering server.");
+      System.err.println("[ERROR] Failed registering server");
+      System.err.println("[ERROR] " + e.getMessage());
       System.err.println(
-          "[WARN] Clients might be unable to connect if registration on the name server failed.");
+          "[WARN] Clients might be unable to connect if registration on the name server failed");
     }
 
     server.run(); // blocks running gRPC server

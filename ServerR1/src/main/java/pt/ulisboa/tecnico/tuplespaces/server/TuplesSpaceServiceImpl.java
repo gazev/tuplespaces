@@ -1,15 +1,14 @@
 package pt.ulisboa.tecnico.tuplespaces.server;
 
+import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
+
 import io.grpc.Status;
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc.TupleSpacesImplBase;
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import io.grpc.stub.StreamObserver;
+import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
+import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc.TupleSpacesImplBase;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.ServerState;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
-
-import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
 
 public class TuplesSpaceServiceImpl extends TupleSpacesImplBase {
   private final ServerState tuplesSpace;

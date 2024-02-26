@@ -1,14 +1,8 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
+import java.util.Scanner;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.ClientService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceException;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceRPCFailureException;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
-
-import java.util.List;
-import java.util.Scanner;
-
-import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 public class CommandProcessor {
 

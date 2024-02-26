@@ -1,13 +1,13 @@
 package pt.ulisboa.tecnico.tuplespaces.server.grpc;
 
+import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerGrpc;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerOuterClass;
 import pt.ulisboa.tecnico.tuplespaces.server.grpc.exceptions.NameServerRPCFailureException;
-
-import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
 
 public class NameServerService {
   private final String address;
@@ -29,6 +29,14 @@ public class NameServerService {
     if (channel != null) this.channel.shutdown();
   }
 
+  /**
+   * NameServer service 'register' gRPC wrapper.
+   *
+   * @param serviceName procedure ServiceName argument
+   * @param qualifier   procedure Qualifier argument
+   * @param address     procedure Address argument
+   * @throws NameServerRPCFailureException on RPC failure
+   */
   public void register(String serviceName, String qualifier, String address)
       throws NameServerRPCFailureException {
     debug(
@@ -47,6 +55,13 @@ public class NameServerService {
     }
   }
 
+  /**
+   * NameServer service 'delete' gRPC wrapper.
+   *
+   * @param serviceName procedure ServiceName argument
+   * @param address     procedure Address argument
+   * @throws NameServerRPCFailureException on RPC failure
+   */
   public void delete(String serviceName, String address) throws NameServerRPCFailureException {
     debug(
             String.format(

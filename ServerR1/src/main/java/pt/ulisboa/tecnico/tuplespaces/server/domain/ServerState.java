@@ -1,10 +1,9 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
-
 import java.util.ArrayList;
 import java.util.List;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
 
 public class ServerState {
   private static final String BGN_TUPLE = "<";

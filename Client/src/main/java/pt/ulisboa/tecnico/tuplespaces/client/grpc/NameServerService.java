@@ -1,18 +1,17 @@
 package pt.ulisboa.tecnico.tuplespaces.client.grpc;
 
+import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import java.util.List;
+import java.util.stream.Collectors;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerGrpc;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerOuterClass;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 public class NameServerService {
   private final String address; // name server address
@@ -23,29 +22,23 @@ public class NameServerService {
     this.address = address;
   }
 
-  /**
-   * Create channel and stub for name server.
-   */
+  /** Create channel and stub for name server. */
   public void connect() {
     debug("NameServerService.connect");
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
-  /**
-   * Perform shutdown logic.
-   */
+  /** Perform shutdown logic. */
   public void shutdown() {
     debug("NameServerService.shutdown");
     this.channel.shutdown();
   }
 
-  /**
-   * Class meant to encapsulate a ServiceEntry protobuf message.
-   */
+  /** Class meant to encapsulate a ServiceEntry protobuf message. */
   public static class ServiceEntry {
-    private final String qualifier;
-    private final String address;
+    private final String qualifier; // service qualifier (e.g "A", "B", "C")
+    private final String address;   // service address
 
     public ServiceEntry(String qualifier, String address) {
       this.qualifier = qualifier;
@@ -62,18 +55,19 @@ public class NameServerService {
   }
 
   /**
-   * 'lookup' gRPC wrapper.
+   * NameServer service 'lookup' gRPC wrapper.
    *
    * @param serviceName procedure ServiceName argument
-   * @param qualifier procedure Qualifier argument
-   *
-   * @return List of ServiceEntries
-   *
-   * @throws NameServerException on RPC failure or if no servers are available for the given parameters
+   * @param qualifier   procedure Qualifier argument
+   * @return list of fetched ServiceEntries
+   * @throws NameServerException on RPC failure or if no servers are available for the given
+   *     parameters
    */
   public List<ServiceEntry> lookup(String serviceName, String qualifier)
       throws NameServerException {
-    debug(String.format("NameServerService.lookup: serviceName=%s, qualifier=%s", serviceName, qualifier));
+    debug(
+        String.format(
+            "NameServerService.lookup: serviceName=%s, qualifier=%s", serviceName, qualifier));
     NameServerOuterClass.LookupResponse response = null;
     try {
       response =
@@ -89,6 +83,8 @@ public class NameServerService {
 
     List<NameServerOuterClass.LookupResponse.ServiceEntry> serversEntries =
         response.getServiceEntriesList();
+
+    // check if no service exists
     if (serversEntries.isEmpty()) {
       throw new NameServerNoServersException(serviceName, qualifier);
     }

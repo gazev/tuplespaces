@@ -34,7 +34,8 @@ public class Server {
   private final String service; // service name     (e.g, "TupleSpace")
   private final String qual;    // server qualifier (e.g, "A")
 
-  private NameServerService nameServerService = null;  // composition, initialized w dependency injection
+  private NameServerService nameServerService =
+      null; // composition, initialized w dependency injection
   private final ServerState state = new ServerState(); // server state
   private io.grpc.Server serverRef = null; // reference kept to perform shutdown logic on SIGINT
 
@@ -47,17 +48,13 @@ public class Server {
     this.nameServerService = nameServerService;
   }
 
-  /**
-   * Perform server initialization logic.
-   */
+  /** Perform server initialization logic. */
   public void setup() {
     debug("Call Server.connect: No arguments");
     this.nameServerService.connect();
   }
 
-  /**
-   * Perform shutdown logic of the server.
-   */
+  /** Perform shutdown logic of the server. */
   public void shutdown() {
     debug("Call Server.shutdown: No arguments");
     try {
@@ -83,8 +80,7 @@ public class Server {
     try {
       this.nameServerService.register(this.service, this.qual, this.host + ":" + this.port);
     } catch (NameServerRPCFailureException e) {
-      debug(e.getMessage());
-      throw new ServerRegisterException(this.service, this.qual, this.host + ":" + this.port);
+      throw new ServerRegisterException(this.service, this.qual, this.host + ":" + this.port, e.getMessage());
     }
   }
 
@@ -98,7 +94,6 @@ public class Server {
     try {
       this.nameServerService.delete(this.service, host + ":" + this.port);
     } catch (NameServerRPCFailureException e) {
-      debug(e.getMessage());
       throw new ServerUnregisterException(this.service, this.host + ":" + this.port);
     }
   }
@@ -120,7 +115,7 @@ public class Server {
       grpcServer.start();
     } catch (IOException e) {
       debug(e.getMessage());
-      System.err.println("[ERROR] Failed launching server.");
+      System.err.println("[ERROR] Failed launching server");
       return;
     }
 
@@ -129,7 +124,7 @@ public class Server {
       grpcServer.awaitTermination(); // blocks here
     } catch (InterruptedException e) {
       debug(e.getMessage());
-      System.err.println("[ERROR] Server execution interrupted.");
+      System.err.println("[ERROR] Server execution interrupted");
     }
   }
 }

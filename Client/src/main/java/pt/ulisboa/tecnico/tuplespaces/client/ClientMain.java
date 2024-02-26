@@ -1,18 +1,14 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
+import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.*;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
-import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerOuterClass;
-
-import javax.naming.Name;
-import java.util.List;
 
 public class ClientMain {
-  // first delivery specification variables
-  public static final String qualifier = "A";
+  public static final String qualifier = "A"; // invariant for 1st delivery
 
-  public static boolean DEBUG_MODE = false;
   private static String nameServerAddr = "localhost:5001"; // hardcoded address of known name server
+  public static boolean DEBUG_MODE = false; // debug flag
 
   public static void debug(String s) {
     if (DEBUG_MODE) {
@@ -41,11 +37,13 @@ public class ClientMain {
       return;
     }
 
+    // check for --help flag
     if (args.length == 1 && (args[0].equals("-h") || args[0].equals("--help"))) {
       printUsage();
       return;
     }
 
+    // check for debug flag;
     if (args.length == 2 && (args[1].equals("-d") || args[1].equals("--debug"))) {
       DEBUG_MODE = true;
       debug("Running in debug mode");
@@ -56,25 +54,28 @@ public class ClientMain {
       debug(String.format("Argument %d: %s", i, args[i]));
     }
 
-
-    final String service = args[0];
+    final String service = args[0]; // invariant(?) "TupleSpaces"
 
     NameServerService nameServer = new NameServerService(nameServerAddr);
     nameServer.connect();
+
     List<NameServerService.ServiceEntry> serverEntries = null;
     try {
-      serverEntries = nameServer.lookup(service, ""); // TODO change for second
+      serverEntries = nameServer.lookup(service, ""); // TODO change qualifier for second delivery
     } catch (NameServerException e) {
-      debug(e.getMessage());
-      System.err.println("[ERROR] Couldn't retrieve servers from name server.");
+      System.err.println("[ERROR] Failed finding servers");
+      System.err.println("[ERROR] " + e.getMessage());
       return;
     } finally {
       nameServer.shutdown();
     }
 
-    debug("[INFO] Got " + serverEntries.size() + " service entries for " + service + " " + qualifier);
+    debug(
+        "[INFO] Got " + serverEntries.size() + " service entries for " + service + " " + qualifier);
 
-    ClientService client = new ClientService(service, serverEntries);
+    ClientService client = new ClientService(serverEntries);
+    System.out.println("[INFO] Running " + service + " client");
+
     CommandProcessor parser = new CommandProcessor(client);
     // start reading input
     parser.parseInput();

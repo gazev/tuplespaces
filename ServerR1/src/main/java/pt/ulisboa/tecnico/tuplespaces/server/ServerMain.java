@@ -29,7 +29,7 @@ public class ServerMain {
             + "Server for TuplesSpace distributed network\n"
             + "\n"
             + "Positional arguments:\n"
-            + "  port        Port where server will listen (default: 2001)\n"
+            + "  port        Port where the server will listen (default: 2001)\n"
             + "  qualifier   Server instance qualifier (default: A)\n"
             + "Options:\n"
             + "  -h, --help  Show this message and exit\n"

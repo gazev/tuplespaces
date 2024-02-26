@@ -9,7 +9,7 @@ Usage: mvn exec:java -Dexec.args="<port> <qualifier> [-h] [-d]"
 Server for TuplesSpace distributed network
 
 Positional arguments:
-    port        Port where server will listen (default: 2001)
+    port        Port where the server will listen (default: 2001)
     qualifier   Server instance qualifier (default: A)
 Options:
     -h, --help  Show this message and exit

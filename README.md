@@ -52,7 +52,7 @@ The Project was also developed using Python 3.11.7, pip 24.0 and a Python virtua
 
 To confirm that you have them installed and which version they are, run in the terminal:
 ```sh
-python --version # or python3 --version
+python --version
 python -m pip --version
 python -m virtualenv --version
 ```
@@ -72,16 +72,15 @@ Now, navigate to the `NameServer/src` directory and install the `name_server` pa
 ```
 pip install .
 ```
----
 
 Once the Python dependencies are installed, install the `Contract` module. Go into the `Contract/` directory and run the following command:
 ```sh
 mvn install exec:exec
 ```
 
-Now the libraries are ready and each module can be compiled and ran individually.
-
 ---
+
+Now the libraries are ready and each module can be compiled and ran individually.
 
 #### Client
 Inside the `Client/` directory run:

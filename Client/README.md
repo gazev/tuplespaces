@@ -11,7 +11,7 @@ Usage: mvn exec:java -Dexec.args="<service> [-h] [-d]"
 Client for TupleSpace distributed network
 
 Positional arguments:
-    service     Service name (default: TupleSpace)
+    service     Service name (default: TupleSpaces)
 Options:
     -h, --help  Show this message and exit
     -d, --debug Run in debug mode

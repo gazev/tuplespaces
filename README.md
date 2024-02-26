@@ -68,8 +68,6 @@ source venv/bin/activate
 ```
 Keep the virtual environment activated for the entire installation process.
 
----
-
 Now, navigate to the `NameServer/src` directory and install the `name_server` package (this will also install the protobuf and gRPC dependencies) running in the terminal:
 ```
 pip install .
@@ -82,6 +80,8 @@ mvn install exec:exec
 ```
 
 Now the libraries are ready and each module can be compiled and ran individually.
+
+---
 
 #### Client
 Inside the `Client/` directory run:

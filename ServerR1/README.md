@@ -1,3 +1,4 @@
+This module contains the Server for the TupleSpaces network
 ## Installation
 
 Follow the installation process found in the root directory of the repository.

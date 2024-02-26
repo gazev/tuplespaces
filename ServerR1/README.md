@@ -1,10 +1,10 @@
-This module contains the Server for the TupleSpaces network
+This module contains the Server for the TupleSpaces network.
 ## Installation
 
 Follow the installation process found in the root directory of the repository.
 ## Usage
 ```
-Usage: mvn exec:java -Dexec.args="<port> [-h] [-d]"
+Usage: mvn exec:java -Dexec.args="<port> <qualifier> [-h] [-d]"
 
 Server for TuplesSpace distributed network
 

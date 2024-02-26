@@ -24,7 +24,7 @@ public class ServerMain {
   /** Print program's usage message */
   private static void printUsage() {
     System.out.println(
-        "Usage: mvn exec:java -Dexec.args=\"<port> [-h] [-d]\"\n"
+        "Usage: mvn exec:java -Dexec.args=\"<port> <qualifier> [-h] [-d]\"\n"
             + "\n"
             + "Server for TuplesSpace distributed network\n"
             + "\n"

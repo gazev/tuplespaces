@@ -1,4 +1,4 @@
-This module contains the Client for the TupleSpaces network
+This module contains the Client for the TupleSpaces network.
 
 ## Instalation
 

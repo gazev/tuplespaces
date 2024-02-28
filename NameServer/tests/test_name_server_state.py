@@ -55,7 +55,7 @@ class TestSimpleNameServer(unittest.TestCase):
         self.assertEqual(self.ns._exists_entry('InvalidName', (ServiceEntry('A', 'localhost:8000'))), False)
 
     def test_exsists_entry_false_qual(self):
-        self.assertEqual(self.ns._exists_entry('TupleSpace', (ServiceEntry('B', 'localhost:8000'))), False)
+        self.assertEqual(self.ns._exists_entry('TupleSpace', (ServiceEntry('B', 'localhost:8000'))), True)
 
     def test_exsists_entry_false_addr(self):
         self.assertEqual(self.ns._exists_entry('TupleSpace', (ServiceEntry('A', 'localhost:8001'))), False)

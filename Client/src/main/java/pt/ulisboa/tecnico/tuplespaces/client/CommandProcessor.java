@@ -14,6 +14,7 @@ public class CommandProcessor {
   private static final String TAKE = "take";
   private static final String SLEEP = "sleep";
   private static final String SET_DELAY = "setdelay";
+  private static final String CLEAR = "clear";
   private static final String EXIT = "exit";
   private static final String GET_TUPLE_SPACES_STATE = "getTupleSpacesState";
 
@@ -55,6 +56,10 @@ public class CommandProcessor {
 
         case SET_DELAY:
           this.setdelay(split);
+          break;
+
+        case CLEAR:
+          System.out.println("\033[2J\033[H");
           break;
 
         case EXIT:
@@ -204,6 +209,7 @@ public class CommandProcessor {
             + "- getTupleSpacesState <server>\n"
             + "- sleep <integer>\n"
             + "- setdelay <server> <integer>\n"
+            + "- clear\n"
             + "- exit\n");
   }
 

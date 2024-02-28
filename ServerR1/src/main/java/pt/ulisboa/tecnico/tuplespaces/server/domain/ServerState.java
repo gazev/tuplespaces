@@ -58,7 +58,7 @@ public class ServerState {
     }
 
     synchronized (this) {
-      tuples.add(tuple);
+      this.tuples.add(tuple);
     }
   }
 
@@ -93,7 +93,7 @@ public class ServerState {
 
     synchronized (this) {
       String tuple = getMatchingTuple(pattern);
-      tuples.remove(tuple);
+      this.tuples.remove(tuple);
       return tuple;
     }
   }
@@ -104,6 +104,6 @@ public class ServerState {
    * @return List of all tuples.
    */
   public synchronized List<String> getTupleSpacesState() {
-    return tuples;
+    return this.tuples;
   }
 }

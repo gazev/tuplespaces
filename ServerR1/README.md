@@ -4,13 +4,17 @@ This module contains the Server for the TupleSpaces network.
 Follow the installation process found in the root directory of the repository.
 ## Usage
 ```
-Usage: mvn exec:java -Dexec.args="<port> <qualifier> [-h] [-d]"
+Usage: mvn exec:java -Dexec.args="<port> <qualifier> [host] [ns_host] [ns_port] [-h] [-d]"
 
 Server for TuplesSpace distributed network
 
 Positional arguments:
-    port        Port where the server will listen (default: 2001)
-    qualifier   Server instance qualifier (default: A)
+    port      Server port
+    qualifier Server instance qualifier
+Optional positional arguments:
+    host        Server host IP address      (default: localhost)
+    ns_host     Name server host IP address (default: localhost)
+    ns_port     Name server port            (default: 5001)
 Options:
     -h, --help  Show this message and exit
     -d, --debug Run in debug mode

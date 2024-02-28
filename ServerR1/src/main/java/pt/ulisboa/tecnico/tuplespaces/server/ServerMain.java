@@ -6,7 +6,7 @@ import pt.ulisboa.tecnico.tuplespaces.server.grpc.NameServerService;
 import static java.lang.Math.pow;
 
 public class ServerMain {
-  private static final String serviceName = "TupleSpaces";       // service name (invariant)
+  private static final String serviceName = "TupleSpaces"; // service name (invariant)
   private static final String nameServerAddr = "localhost:5001"; // hardcoded address of name server
   private static boolean DEBUG_MODE = false; // debug flag
 
@@ -23,37 +23,82 @@ public class ServerMain {
 
   /** Print program's usage message */
   private static void printUsage() {
-    System.out.println(
-        "Usage: mvn exec:java -Dexec.args=\"<port> <qualifier> [-h] [-d]\"\n"
+    System.err.println(
+        "Usage: mvn exec:java -Dexec.args=\"<port> <qualifier> [host] [ns_host] [ns_port] [-h] [-d]\"\n"
             + "\n"
             + "Server for TuplesSpace distributed network\n"
             + "\n"
             + "Positional arguments:\n"
-            + "  port        Port where the server will listen (default: 2001)\n"
-            + "  qualifier   Server instance qualifier (default: A)\n"
+            + "  port        Server port\n"
+            + "  qualifier   Server instance qualifier\n"
+            + "Optional positional arguments:\n"
+            + "  host        Server host IP address      (default: localhost)\n"
+            + "  ns_host     Name server host IP address (default: localhost)\n"
+            + "  ns_port     Name server port            (default: 5001)\n"
             + "Options:\n"
-            + "  -h, --help  Show this message and exit\n"
-            + "  -d, --debug Run in debug mode");
+            + "  -h, -help  Show this message and exit\n"
+            + "  -d, -debug Run in debug mode");
   }
 
   public static void main(String[] args) {
+    String host = "localhost";
+    String nsHost = "localhost";
+    String nsPort = "5001";
+
     // check for valid number of arguments
     if (args.length < 2) {
-      System.err.println("Missing positional arguments");
+      if (args.length == 1 && (args[0].equals("-h") || args[0].equals("-help"))) {
+        printUsage();
+        System.exit(0);
+      }
+      System.err.println("Invalid number of arguments");
       printUsage();
-      return;
+      System.exit(1);
     }
 
-    // check for "--help" and "--debug" flags
-    if (args.length == 3) {
-      if (args[2].equals("--help") || args[2].equals("-h")) {
-        printUsage();
-        return;
-      } else if (args[2].equals("--debug") || args[2].equals("-d")) {
-        DEBUG_MODE = true;
-      } else {
-        System.out.println("[INFO] Got unknown argument %s" + args[2]);
+    String qualifier = null;
+    String port = null;
+
+    // parse arguments
+    for (int i = 0; i < args.length; i++) {
+      if (args[i].startsWith("-")) { // validate options
+        switch (args[i]) {
+          case "-h":
+          case "-help":
+            printUsage();
+            System.exit(0);
+            break;
+          case "-d":
+          case "-debug":
+            DEBUG_MODE = true;
+            break;
+          default:
+            System.err.println("Unknown option: " + args[i]);
+            printUsage();
+            System.exit(1);
+        }
+      } else { // validate positional arguments
+        if (i == 0) {
+          port = args[i];
+        } else if (i == 1) {
+          qualifier = args[i];
+        } else if (i == 2) {
+          host = args[i];
+        } else if (i == 3) {
+          nsHost = args[i];
+          if (args.length > i + 1) {
+            nsPort = args[i + 1];
+            i++;
+          }
+        }
       }
+    }
+
+    // check if positional arguments were set
+    if (qualifier == null || port == null) {
+      System.err.println("Missing positional arguments");
+      printUsage();
+      System.exit(1);
     }
 
     // print arguments if in DEBUG_MODE
@@ -62,10 +107,10 @@ public class ServerMain {
     }
 
     // validate port argument
-    int port;
+    int portInt;
     try {
-      port = Integer.parseInt(args[0]);
-      if (port <= 1024 || port >= pow(2, 16)) {
+      portInt = Integer.parseInt(port);
+      if (portInt <= 1024 || portInt >= pow(2, 16)) {
         throw new NumberFormatException(); // will be caught and resume in following catch
       }
     } catch (NumberFormatException e) {
@@ -75,39 +120,47 @@ public class ServerMain {
       return;
     }
 
-    // server qualifier
-    String qualifier = args[1];
+    // validate ns port argument
+    int nsPortInt;
+    try {
+      nsPortInt = Integer.parseInt(nsPort);
+      if (nsPortInt <= 1024 || nsPortInt >= pow(2, 16)) {
+        throw new NumberFormatException(); // will be caught and resume in following catch
+      }
+    } catch (NumberFormatException e) {
+      System.err.println(
+              "Invalid 'ns_port' argument, expected an integer in valid port range, got " + args[0]);
+      printUsage();
+      return;
+    }
+
+    String serverAddr = host + ":" + port;
+    String nsAddr = nsHost + ":" + nsPort;
 
     // entry point
-    run("localhost", port, qualifier, serviceName);
+    run("TupleSpaces", serverAddr, qualifier, nsAddr);
   }
 
   /**
    * Run a new server instance.
    *
-   * @param host server host address (e.g, "localhost")
-   * @param port server port (e.g, 2001)
-   * @param qual server qualifier (e.g, "A")
-   * @param service server service name (e.g, TupleSpaces)
+   * @param serverAddr String of server instance address (e.g localhost:2001)
+   * @param qualifier  Server instance qualifier         (e.g "A")
+   * @param nsAddr     String of name server address     (e.g "localhost:5001)
    */
-  public static void run(String host, int port, String qual, String service) {
+  public static void run(String serviceName, String serverAddr, String qualifier, String nsAddr) {
     // class responsible for talking to the name server
-    NameServerService nameServerService = new NameServerService(nameServerAddr);
-
-    // inject NameServerService
-    Server server = new Server(host, port, qual, service, nameServerService);
-
-    server.setup(); // initialize server
-
-    // register server in name server
+    NameServerService nameServerService = new NameServerService(nsAddr);
+    // injects NameServerService in Server object
+    Server server = new Server(serviceName, serverAddr, qualifier, nameServerService);
     try {
+      // register server in name server
       server.register();
     } catch (ServerRegisterException e) {
-      debug(e.getMessage());
       System.err.println("[ERROR] Failed registering server");
       System.err.println("[ERROR] " + e.getMessage());
-      System.err.println(
-          "[WARN] Clients might be unable to connect if registration on the name server failed");
+      server.getNameServerService().shutdown();
+      return;
     }
 
     server.run(); // blocks running gRPC server

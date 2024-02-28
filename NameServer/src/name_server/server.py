@@ -84,7 +84,7 @@ class NameServer(pb2_grpc.NameServerServicer):
     
     def run(self, port: int):
         """ Program's entry point, runs gRPC NameServer service on port ``port`` """
-        server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        server = grpc.server(futures.ThreadPoolExecutor(max_workers=1))
         pb2_grpc.add_NameServerServicer_to_server(self, server)
         server.add_insecure_port(f'localhost:{port}')
 

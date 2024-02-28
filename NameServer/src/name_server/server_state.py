@@ -35,7 +35,7 @@ class NameServerState:
 
         # check if service entry is already registered
         for el in self._name_lookup_table[name]:
-            if el == service_entry:
+            if el.addr == service_entry.addr:
                 return True
         
         return False
@@ -102,7 +102,7 @@ class NameServerState:
         return []
    
     def delete(self, name: str, addr: str) -> None:
-        """ 
+        """
         Deletes ServiceEntry indexed by ``name`` with given ``addr`` as address from names table. 
 
         :params name: Desired ServiceEntries name.

@@ -18,12 +18,14 @@ public class NameServerService {
   private ManagedChannel channel;
   private NameServerGrpc.NameServerBlockingStub stub;
 
-  public NameServerService(String address) {
-    this.address = address;
+  public NameServerService(String nsAddress) {
+    this.address = nsAddress;
+
+    setup();
   }
 
   /** Create channel and stub for name server. */
-  public void connect() {
+  private void setup() {
     debug("NameServerService.connect");
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);

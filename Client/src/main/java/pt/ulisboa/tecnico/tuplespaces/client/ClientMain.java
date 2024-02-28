@@ -5,9 +5,6 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.*;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 
 public class ClientMain {
-  public static final String qualifier = "A"; // invariant for 1st delivery
-
-  private static String nameServerAddr = "localhost:5001"; // hardcoded address of known name server
   public static boolean DEBUG_MODE = false; // debug flag
 
   public static void debug(String s) {
@@ -17,36 +14,57 @@ public class ClientMain {
   }
 
   private static void printUsage() {
-    System.out.println(
-        "Usage: mvn exec:java -Dexec.args=\"<service> [-h] [-d]\"\n"
+    System.err.println(
+        "Usage: mvn exec:java -Dexec.args=\"[ns_host] [ns_port] [-h] [-d]\"\n"
             + "\n"
             + "Client for TupleSpace distributed network\n"
             + "\n"
-            + "Positional arguments:\n"
-            + "  service     Service name (default: TupleSpace)\n"
+            + "Optional positional arguments:\n"
+            + "  ns_host     Name server host IP address (default: localhost)\n"
+            + "  ns_port     Name server port            (default: 5001)\n"
             + "Options:\n"
-            + "  -h, --help  Show this message and exit\n"
-            + "  -d, --debug Run in debug mode");
+            + "  -h, -help   Show this message and exit\n"
+            + "  -d, -debug  Run in debug mode");
   }
 
   public static void main(String[] args) {
-    // check arguments
-    if (args.length < 1) {
-      System.err.println("Missing <service> argument");
+    String nsHost = "localhost"; // default ns_host argument value
+    String nsPort = "5001";      // default ns_port argument value
+
+    // check for too much arguments (it will make no sense of positional arguments)
+    if (args.length > 3) {
+      System.err.println("Too many arguments provided");
       printUsage();
-      return;
+      System.exit(1);
     }
 
-    // check for --help flag
-    if (args.length == 1 && (args[0].equals("-h") || args[0].equals("--help"))) {
-      printUsage();
-      return;
-    }
-
-    // check for debug flag;
-    if (args.length == 2 && (args[1].equals("-d") || args[1].equals("--debug"))) {
-      DEBUG_MODE = true;
-      debug("Running in debug mode");
+    // parse arguments
+    for (int i = 0; i < args.length; i++) {
+      if (args[i].startsWith("-")) { // validate options
+        switch (args[i]) {
+          case "-h":
+          case "-help":
+          case "--help":
+            printUsage();
+            System.exit(0);
+            break;
+          case "-d":
+          case "-debug":
+          case "--debug":
+            DEBUG_MODE = true;
+            break;
+          default:
+            System.err.println("Unknown option: " + args[i]);
+            printUsage();
+            System.exit(1);
+        }
+      } else { // validate positional arguments
+        nsHost = args[i];
+        if (args.length > i + 1) {
+          nsPort = args[i + 1];
+          i++;
+        }
+      }
     }
 
     // print arguments if in DEBUG_MODE
@@ -54,14 +72,16 @@ public class ClientMain {
       debug(String.format("Argument %d: %s", i, args[i]));
     }
 
-    final String service = args[0]; // invariant(?) "TupleSpaces"
+    final String nsAddr = nsHost + ":" + nsPort;
 
-    NameServerService nameServer = new NameServerService(nameServerAddr);
-    nameServer.connect();
+    run(nsAddr, "TupleSpaces", "");
+  }
 
+  public static void run(String nsAddr, String serviceName, String serviceQualifier) {
+    NameServerService nameServer = new NameServerService(nsAddr);
     List<NameServerService.ServiceEntry> serverEntries = null;
     try {
-      serverEntries = nameServer.lookup(service, ""); // TODO change qualifier for second delivery
+      serverEntries = nameServer.lookup(serviceName, serviceQualifier);
     } catch (NameServerException e) {
       System.err.println("[ERROR] Failed finding servers");
       System.err.println("[ERROR] " + e.getMessage());
@@ -70,16 +90,12 @@ public class ClientMain {
       nameServer.shutdown();
     }
 
-    debug(
-        "[INFO] Got " + serverEntries.size() + " service entries for " + service + " " + qualifier);
+    debug("[INFO] Got " + serverEntries.size() + " servers for service " + serviceName);
 
     ClientService client = new ClientService(serverEntries);
-    System.out.println("[INFO] Running " + service + " client");
-
     CommandProcessor parser = new CommandProcessor(client);
     // start reading input
     parser.parseInput();
-
     // shutdown client
     client.shutdown();
   }

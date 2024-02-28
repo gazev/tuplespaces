@@ -13,20 +13,22 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceRPCFai
 /** ClientService class encapsulates the gRPC interface of the TupleSpaces service client. */
 public class ClientService {
 
-  /** ServerService class represents a gRPC server of the TupleSpaces service */
-  public static class ServerService {
-    public final String address;
-    public final String qualifier;
+  /** ServerEntry class represents a gRPC server of the TupleSpaces network */
+  public static class ServerEntry {
+    public final String address;   // server address
+    public final String qualifier; // server qualifier
     public ManagedChannel channel;
     public TupleSpacesGrpc.TupleSpacesBlockingStub stub;
 
-    public ServerService(String address, String qualifier) {
+    public ServerEntry(String address, String qualifier) {
       this.address = address;
       this.qualifier = qualifier;
+
+      setup();
     }
 
     /** Create channel and stub for given server */
-    public void connect() {
+    private void setup() {
       debug("Call ServerService.connect");
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
@@ -35,40 +37,47 @@ public class ClientService {
     /** Server shutdown logic */
     public void shutdown() {
       debug("Call ServerService.shutdown");
-      channel.shutdown();
+      this.channel.shutdown();
     }
   }
 
-  private final ServerService
-      server; // server we are talking to, only one now, TODO probably a list on 2nd delivery
+  private ServerEntry
+      server; // server we are talking to, only one now, TODO change for second phase
 
   /**
-   * @param serverEntries available servers fetched from name server
+   * @param serverEntries ServiceEntry list with all available servers fetched from name server
    */
   public ClientService(List<NameServerService.ServiceEntry> serverEntries) {
-    this.server =
-        new ServerService(
-            serverEntries.get(0).getAddress(),
-            serverEntries.get(0).getQualifier()); // TODO first delivery only 1 server
-    this.server.connect();
+    setServer(serverEntries.get(0)); // TODO change for second phase where we call addServer for all fetched servers
+  }
+
+  /**
+   * Set the Server the client is talking to
+   * // TODO replace with addServer for second phase
+   *
+   * @param serverEntry NameServerService.ServiceEntry which represents a server fetched from the name server
+   */
+  public void setServer(NameServerService.ServiceEntry serverEntry) {
+    this.server = new ServerEntry(serverEntry.getAddress(), serverEntry.getQualifier());
   }
 
   /** Perform shutdown logic */
   public void shutdown() {
     debug("Call ClientService.shutdown");
-    if (server != null) server.shutdown();
+    if (this.server != null) server.shutdown();
   }
 
   /**
-   * 'put' gRPC wrapper.
+   * TupleSpaces 'put' gRPC wrapper.
    *
-   * @param tuple put procedure argument
-   * @throws ClientServiceRPCFailureException on RPC failure
+   * @param tuple String of the tuple we wish to save to the server
+   * @throws ClientServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public void put(String tuple) throws ClientServiceRPCFailureException {
     debug("Call ClientService.put: tuple=" + tuple);
     try {
-      server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
+      // we ignore the return value because it's an empty response
+      this.server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
     } catch (StatusRuntimeException e) {
       debug(e.getMessage());
       throw new ClientServiceRPCFailureException("Put", e.getStatus().getDescription());
@@ -76,18 +85,18 @@ public class ClientService {
   }
 
   /**
-   * 'read' gRPC wrapper.
+   * TupleSpaces 'read' gRPC wrapper.
    *
-   * @param searchPattern read procedure argument
-   * @return string of the operation result
-   * @throws ClientServiceRPCFailureException on RPC failure
+   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to read from the server.
+   * @return String representation of the tuple read from the server
+   * @throws ClientServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String read(String searchPattern) throws ClientServiceRPCFailureException {
     debug("Call ClientService.read: searchPattern=" + searchPattern);
     TupleSpacesCentralized.ReadResponse response = null;
     try {
       response =
-          server.stub.read(
+          this.server.stub.read(
               TupleSpacesCentralized.ReadRequest.newBuilder()
                   .setSearchPattern(searchPattern)
                   .build());
@@ -100,18 +109,19 @@ public class ClientService {
   }
 
   /**
-   * 'take' gRPC wrapper.
+   * TupleSpaces 'take' gRPC wrapper.
    *
-   * @param searchPattern take procedure argument
-   * @return string of the operation result
-   * @throws ClientServiceRPCFailureException on RPC failure
+   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to read from the server.
+   * @return String representation of the tuple read from the server
+   * @return String representation of the tuple taken from the server
+   * @throws ClientServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String take(String searchPattern) throws ClientServiceRPCFailureException {
     debug("Call ClientService.take: searchPattern=" + searchPattern);
     TupleSpacesCentralized.TakeResponse response = null;
     try {
       response =
-          server.stub.take(
+          this.server.stub.take(
               TupleSpacesCentralized.TakeRequest.newBuilder()
                   .setSearchPattern(searchPattern)
                   .build());
@@ -124,9 +134,9 @@ public class ClientService {
   }
 
   /**
-   * 'getTupleSpacesState' gRPC wrapper.
+   * TupleSpaces 'getTupleSpacesState' gRPC wrapper.
    *
-   * @return string of the operation result
+   * @return String representation of the list with all tuples in the server
    * @throws ClientServiceRPCFailureException on RPC failure
    */
   public String getTupleSpacesState() throws ClientServiceRPCFailureException {
@@ -134,7 +144,7 @@ public class ClientService {
     TupleSpacesCentralized.getTupleSpacesStateResponse response = null;
     try {
       response =
-          server.stub.getTupleSpacesState(
+          this.server.stub.getTupleSpacesState(
               TupleSpacesCentralized.getTupleSpacesStateRequest.getDefaultInstance());
     } catch (StatusRuntimeException e) {
       debug(e.getStatus().getDescription());
@@ -142,7 +152,6 @@ public class ClientService {
           "GetTupleSpacesState", e.getStatus().getDescription());
     }
 
-    // return first result
     return response.getTupleList().toString();
   }
 }

@@ -14,11 +14,13 @@ public class NameServerService {
   private ManagedChannel channel;
   private NameServerGrpc.NameServerBlockingStub stub;
 
-  public NameServerService(String address) {
-    this.address = address;
+  public NameServerService(String nsAddress) {
+    this.address = nsAddress;
+
+    setup();
   }
 
-  public void connect() {
+  private void setup() {
     debug("Call NameServerService.connect: No arguments");
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
@@ -26,7 +28,7 @@ public class NameServerService {
 
   public void shutdown() {
     debug("Call NameServerService.shutdown: No arguments");
-    if (channel != null) this.channel.shutdown();
+    if (this.channel != null) this.channel.shutdown();
   }
 
   /**
@@ -37,6 +39,15 @@ public class NameServerService {
    * @param address     procedure Address argument
    * @throws NameServerRPCFailureException on RPC failure
    */
+
+  /**
+   * NameServerService 'register' gRPC command wrapper.
+   *
+   * @param serviceName String representing the service that is being serving
+   * @param qualifier   String representing the server's qualifier
+   * @param address     String representing the server's address
+   * @throws NameServerRPCFailureException on RPC failure or incapability of registering the server on the name server
+   */
   public void register(String serviceName, String qualifier, String address)
       throws NameServerRPCFailureException {
     debug(
@@ -44,7 +55,7 @@ public class NameServerService {
             "Call NameServerService.register: serviceName=%s, qualifier=%s, address=%s",
             serviceName, qualifier, address));
     try {
-      stub.register(
+      this.stub.register(
           NameServerOuterClass.RegisterRequest.newBuilder()
               .setServiceName(serviceName)
               .setQualifier(qualifier)
@@ -56,11 +67,11 @@ public class NameServerService {
   }
 
   /**
-   * NameServer service 'delete' gRPC wrapper.
+   * NameServerService 'delete' gRPC wrapper.
    *
-   * @param serviceName procedure ServiceName argument
-   * @param address     procedure Address argument
-   * @throws NameServerRPCFailureException on RPC failure
+   * @param serviceName String representing the service that is being served
+   * @param address     String representing the server's address
+   * @throws NameServerRPCFailureException on RPC failure or incapability of deleting the server in the name server
    */
   public void delete(String serviceName, String address) throws NameServerRPCFailureException {
     debug(
@@ -69,7 +80,7 @@ public class NameServerService {
                     serviceName, address));
 
     try {
-      stub.delete(
+      this.stub.delete(
           NameServerOuterClass.DeleteRequest.newBuilder()
               .setServiceName(serviceName)
               .setAddress(address)

@@ -65,11 +65,13 @@ public class ServerMain {
         switch (args[i]) {
           case "-h":
           case "-help":
+          case "--help":
             printUsage();
             System.exit(0);
             break;
           case "-d":
           case "-debug":
+          case "--debug":
             DEBUG_MODE = true;
             break;
           default:

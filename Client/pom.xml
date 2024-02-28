@@ -67,7 +67,7 @@
 				<configuration>
 					<mainClass>${mainclass}</mainClass>
 					<arguments>
-						<argument>-debug</argument>
+<!--						<argument>-debug</argument>-->
 					</arguments>
 				</configuration>
 			</plugin>

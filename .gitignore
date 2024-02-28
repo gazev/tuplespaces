@@ -8,6 +8,7 @@
 .idea/
 .vscode/
 settings.json
+test-outputs/
 # User-specific stuff
 .idea/**/workspace.xml
 .idea/**/tasks.xml

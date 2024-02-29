@@ -37,13 +37,20 @@ public class ServerState {
       throw new InvalidInputSearchPatternException(pattern);
     }
 
-    for (String t : this.tuples) {
-      if (t.matches(pattern)) {
-        return t;
+    synchronized (this) {
+      while (true) {
+        for (String t : this.tuples) {
+          if (t.matches(pattern)) {
+            return t;
+          }
+        }
+        try {
+          wait();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
       }
     }
-
-    return null; // remove this when blocking done
   }
 
   /**
@@ -59,6 +66,7 @@ public class ServerState {
 
     synchronized (this) {
       this.tuples.add(tuple);
+      notifyAll();
     }
   }
 

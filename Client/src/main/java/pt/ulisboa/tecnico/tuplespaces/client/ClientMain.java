@@ -110,7 +110,7 @@ public class ClientMain {
 
     ClientService client;
     try {
-      ClientService client = new ClientService(serverEntries);
+      client = new ClientService(serverEntries);
     } catch (java.lang.IllegalArgumentException e) {
       // TODO for second phase this should be handled inside the constructor and a custom exception
       // should be used for the case where all servers had invalid arguments

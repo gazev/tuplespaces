@@ -117,7 +117,7 @@ public class ServerMain {
       }
     } catch (NumberFormatException e) {
       System.err.println(
-          "Invalid 'port' argument, expected an integer in valid port range, got " + args[0]);
+          "Invalid 'port' argument, expected an integer in valid port range, got " + port);
       printUsage();
       return;
     }
@@ -131,7 +131,7 @@ public class ServerMain {
       }
     } catch (NumberFormatException e) {
       System.err.println(
-              "Invalid 'ns_port' argument, expected an integer in valid port range, got " + args[0]);
+              "Invalid 'ns_port' argument, expected an integer in valid port range, got " + nsPort);
       printUsage();
       return;
     }

@@ -4,6 +4,8 @@ import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.*;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 
+import static java.lang.Math.pow;
+
 public class ClientMain {
   public static boolean DEBUG_MODE = false; // debug flag
 
@@ -67,6 +69,20 @@ public class ClientMain {
       }
     }
 
+    // validate port argument
+    int nsPortInt;
+    try {
+      nsPortInt = Integer.parseInt(nsPort);
+      if (nsPortInt <= 1024 || nsPortInt >= pow(2, 16)) {
+        throw new NumberFormatException(); // will be caught and resume in following catch
+      }
+    } catch (NumberFormatException e) {
+      System.err.println(
+              "Invalid 'port' argument, expected an integer in valid port range, got " + nsPort);
+      printUsage();
+      return;
+    }
+
     // print arguments if in DEBUG_MODE
     for (int i = 0; i < args.length; ++i) {
       debug(String.format("Argument %d: %s", i, args[i]));
@@ -92,7 +108,16 @@ public class ClientMain {
 
     debug("[INFO] Got " + serverEntries.size() + " servers for service " + serviceName);
 
-    ClientService client = new ClientService(serverEntries);
+    ClientService client;
+    try {
+      ClientService client = new ClientService(serverEntries);
+    } catch (java.lang.IllegalArgumentException e) {
+      // TODO for second phase this should be handled inside the constructor and a custom exception
+      // should be used for the case where all servers had invalid arguments
+      System.err.println("[ERROR] Invalid server entries retreived from name server. Error: " + e .getMessage());
+      return;
+    }
+
     CommandProcessor parser = new CommandProcessor(client);
     // start reading input
     parser.parseInput();

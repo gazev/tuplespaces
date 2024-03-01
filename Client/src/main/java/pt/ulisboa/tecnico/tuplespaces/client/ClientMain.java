@@ -1,12 +1,11 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
+import static java.lang.Math.pow;
+
 import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.*;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
-
-import static java.lang.Math.pow;
 
 public class ClientMain {
   public static boolean DEBUG_MODE = false; // debug flag

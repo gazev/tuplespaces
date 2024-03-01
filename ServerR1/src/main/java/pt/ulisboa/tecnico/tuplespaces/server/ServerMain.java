@@ -1,8 +1,8 @@
 package pt.ulisboa.tecnico.tuplespaces.server;
 
-import pt.ulisboa.tecnico.tuplespaces.server.grpc.NameServerService;
-
 import static java.lang.Math.pow;
+
+import pt.ulisboa.tecnico.tuplespaces.server.grpc.NameServerService;
 
 public class ServerMain {
   private static final String serviceName = "TupleSpaces"; // service name (invariant)

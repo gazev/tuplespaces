@@ -17,7 +17,6 @@ public class TuplesSpacesService {
   public static class ServerEntry {
     public final String qualifier; // server qualifier
     public final String address;   // server address
-
     public ManagedChannel channel;
     public TupleSpacesGrpc.TupleSpacesBlockingStub stub;
 

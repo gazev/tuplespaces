@@ -1,8 +1,8 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
-import java.util.Scanner;
-
 import static pt.ulisboa.tecnico.tuplespaces.client.Client.rpcRetry;
+
+import java.util.Scanner;
 
 public class CommandProcessor {
 

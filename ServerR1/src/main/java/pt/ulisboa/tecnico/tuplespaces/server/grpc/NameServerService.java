@@ -9,6 +9,8 @@ import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerGrpc;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerOuterClass;
 import pt.ulisboa.tecnico.tuplespaces.server.grpc.exceptions.NameServerRPCFailureException;
 
+
+/** NameServerService class encapsulates the gRPC interface of the NameServer for a TupleSpaces Server */
 public class NameServerService {
   private final String address;
   private ManagedChannel channel;
@@ -20,25 +22,18 @@ public class NameServerService {
     setup();
   }
 
+   /** Create channel and stub for name server. */
   private void setup() {
     debug("Call NameServerService.connect(): No arguments");
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
+  /** Perform name server shutdown logic */
   public void shutdown() {
     debug("Call NameServerService.shutdown(): No arguments");
     if (this.channel != null) this.channel.shutdown();
   }
-
-  /**
-   * NameServer service 'register' gRPC wrapper.
-   *
-   * @param serviceName procedure ServiceName argument
-   * @param qualifier   procedure Qualifier argument
-   * @param address     procedure Address argument
-   * @throws NameServerRPCFailureException on RPC failure
-   */
 
   /**
    * NameServerService 'register' gRPC command wrapper.

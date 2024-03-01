@@ -6,15 +6,17 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerGrpc;
 import pt.ulisboa.tecnico.tuplespaces.nameserver.contract.NameServerOuterClass;
 
+/**
+ * NameServerService class encapsulates the gRPC interface of the NameServer for a TupleSpaces
+ * Client
+ */
 public class NameServerService {
   private final String address; // name server address
   private ManagedChannel channel;

@@ -45,7 +45,8 @@ public class Client {
         newServerEntries = nameServerService.lookup(serviceName, serviceQualifier);
         tupleSpacesService.setServer(newServerEntries);
       } catch (NameServerRPCFailureException e) {
-        System.err.printf("[ERROR] Failed communicating with name server. Error: %s\n", e.getMessage());
+        System.err.printf(
+            "[ERROR] Failed communicating with name server. Error: %s\n", e.getMessage());
         return;
       } catch (NameServerNoServersException e) {
         System.err.println("[WARN] " + e.getMessage());
@@ -74,14 +75,18 @@ public class Client {
       }
     } catch (TupleSpacesServiceRPCFailureException e) {
       // TODO this might not be used in second phase
-      System.err.printf("[WARN] Failed procedure %s call on %s. Error: %s\n", command, tupleSpacesService.getServer().getAddress(), e.getMessage());
+      System.err.printf(
+          "[WARN] Failed procedure %s call on %s. Error: %s\n",
+          command, tupleSpacesService.getServer().getAddress(), e.getMessage());
       tupleSpacesService.removeCurrentServer(); // remove server assumed to be shutdown or faulty
       if (retries != 0) {
         System.err.println("[WARN] Retrying with new servers");
         invoke_remote_command(command, args, retries - 1); // retry the operation with new lookup
         return;
-        }
-      System.err.printf("[ERROR] Couldn't complete %s procedure after %d attempts, procedure aborted\n", command, rpcRetry + 1);
+      }
+      System.err.printf(
+          "[ERROR] Couldn't complete %s procedure after %d attempts, procedure aborted\n",
+          command, rpcRetry + 1);
       return;
     }
 
@@ -92,31 +97,27 @@ public class Client {
     System.out.println(); // print new line after result because thats what the examples do
   }
 
-  /**
-   * Simply calls TupleSpacesService put, @see TupleSpacesService.put()
-   */
+  /** Simply calls TupleSpacesService put, @see TupleSpacesService.put() */
   private void put(String tuple) throws TupleSpacesServiceRPCFailureException {
     tupleSpacesService.put(tuple);
   }
 
-  /**
-   * Simply calls TupleSpacesService read, @see TupleSpacesService.read()
-   */
+  /** Simply calls TupleSpacesService read, @see TupleSpacesService.read() */
   private String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
     return tupleSpacesService.read(searchPattern);
   }
 
-  /**
-   * Simply calls TupleSpacesService take, @see TupleSpacesService.take()
-   */
+  /** Simply calls TupleSpacesService take, @see TupleSpacesService.take() */
   private String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
     return tupleSpacesService.take(searchPattern);
   }
 
   /**
-   * Simply calls TupleSpacesService getTupleSpacesState, @see TupleSpacesService.getTupleSpacesState()
+   * Simply calls TupleSpacesService getTupleSpacesState, @see
+   * TupleSpacesService.getTupleSpacesState()
    */
-  private String getTupleSpacesState(String serviceQualifier) throws TupleSpacesServiceRPCFailureException {
+  private String getTupleSpacesState(String serviceQualifier)
+      throws TupleSpacesServiceRPCFailureException {
     return tupleSpacesService.getTupleSpacesState();
   }
 }

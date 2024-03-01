@@ -161,7 +161,7 @@ public class ServerMain {
     } catch (ServerRegisterException e) {
       System.err.println("[ERROR] Failed registering server");
       System.err.println("[ERROR] " + e.getMessage());
-      server.getNameServerService().shutdown();
+      nameServerService.shutdown();
       return;
     }
 

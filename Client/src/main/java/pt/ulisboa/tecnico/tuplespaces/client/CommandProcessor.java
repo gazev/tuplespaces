@@ -1,27 +1,25 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
 import java.util.Scanner;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.ClientService;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.ClientServiceException;
 
 public class CommandProcessor {
 
   private static final String SPACE = " ";
   private static final String BGN_TUPLE = "<";
   private static final String END_TUPLE = ">";
-  private static final String PUT = "put";
-  private static final String READ = "read";
-  private static final String TAKE = "take";
+  public static final String PUT = "put";
+  public static final String READ = "read";
+  public static final String TAKE = "take";
   private static final String SLEEP = "sleep";
   private static final String SET_DELAY = "setdelay";
   private static final String CLEAR = "clear";
   private static final String EXIT = "exit";
-  private static final String GET_TUPLE_SPACES_STATE = "getTupleSpacesState";
+  public static final String GET_TUPLE_SPACES_STATE = "getTupleSpacesState";
 
-  private final ClientService clientService;
+  private final Client client;
 
-  public CommandProcessor(ClientService clientService) {
-    this.clientService = clientService;
+  public CommandProcessor(Client client) {
+    this.client = client;
   }
 
   void parseInput() {
@@ -83,14 +81,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    // put the tuple
-    try {
-      clientService.put(tuple);
-    } catch (ClientServiceException e) {
-      System.out.println(e.getMessage());
-      return;
-    }
-    System.out.println("OK\n");
+    client.invoke_remote_command(PUT, tuple);
   }
 
   private void read(String[] split) {
@@ -103,16 +94,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    // read the tuple
-    String response;
-    try {
-      response = clientService.read(tuple);
-    } catch (ClientServiceException e) {
-      System.out.println(e.getMessage());
-      return;
-    }
-    System.out.println("OK");
-    System.out.println(response + "\n");
+    client.invoke_remote_command(READ, tuple);
   }
 
   private void take(String[] split) {
@@ -122,20 +104,9 @@ public class CommandProcessor {
       return;
     }
 
-    // get the tuple
     String tuple = split[1];
 
-    String response;
-    // take the tuple
-    try {
-      response = clientService.take(tuple);
-    } catch (ClientServiceException e) {
-      System.out.println(e.getMessage());
-      return;
-    }
-
-    System.out.println("OK");
-    System.out.println(response + "\n");
+    client.invoke_remote_command(TAKE, tuple);
   }
 
   private void getTupleSpacesState(String[] split) {
@@ -143,19 +114,10 @@ public class CommandProcessor {
       this.printUsage();
       return;
     }
-    // String qualifier = split[1];
 
-    // get the tuple spaces state
-    String response;
-    try {
-      response = clientService.getTupleSpacesState();
-    } catch (ClientServiceException e) {
-      System.out.println(e.getMessage());
-      return;
-    }
+    String qualifier = split[1];
 
-    System.out.println("OK");
-    System.out.println(response + "\n");
+    client.invoke_remote_command(GET_TUPLE_SPACES_STATE, qualifier);
   }
 
   private void sleep(String[] split) {

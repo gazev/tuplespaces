@@ -15,25 +15,16 @@ import java.io.IOException;
 /**
  * Class encapsulating a TupleSpaces server.
  *
- * <p>The Class keeps an internal Tuple Space state, initially empty, and serves clients over gRPC.
- * See the full specification of the TupleSpaces server <a
- * href="https://github.com/tecnico-distsys/TupleSpaces/blob/master/tuplespaces.md">here</a>
- *
- * <p>Example usage:
- *
- * <pre>{@code
- * Server tupleServer = new Server("localhost", "2001", "A", "TupleSpaces");
- * tupleServer.registerInNameServer();
- * tupleServer.run();
- * tupleServer.unregisterInNameServer();
- * }</pre>
+ * The Class keeps an internal Tuple Space state, initially empty, and serves clients over gRPC.
+ * See the full specification of the TupleSpaces server at
+ * "https://github.com/tecnico-distsys/TupleSpaces/blob/master/tuplespaces.md"
  */
 public class Server {
   private final String serviceName; // service name (e.g "TupleSpaces")
   private final String address;     // server address
   private final String qualifier;   // server qualifier (e.g, "A")
 
-  private final NameServerService nameServerService;         // class responsible for communication with the name server service
+  private final NameServerService nameServerService;   // class responsible for communication with the name server service
   private final ServerState state = new ServerState(); // server state
   private io.grpc.Server serverRef = null;             // reference kept to perform shutdown logic on SIGINT
 
@@ -45,13 +36,9 @@ public class Server {
     this.nameServerService = nameServerService;
   }
 
-  public NameServerService getNameServerService() {
-    return this.nameServerService;
-  }
-
   /** Perform shutdown logic of the server. */
   public void shutdown() {
-    debug("Call Server.shutdown: No arguments");
+    debug("Call Server.shutdown(): No arguments");
     try {
       unregister(); // unregister our server instance on the name server
     } catch (ServerUnregisterException e) {
@@ -71,7 +58,7 @@ public class Server {
    * @throws ServerRegisterException if registration cannot be completed
    */
   public void register() throws ServerRegisterException {
-    debug("Call Server.register: No arguments");
+    debug("Call Server.register(): No arguments");
     try {
       this.nameServerService.register(this.serviceName, this.qualifier, this.address);
     } catch (NameServerRPCFailureException e) {
@@ -85,7 +72,7 @@ public class Server {
    * @throws ServerUnregisterException if the deletion cannot be completed
    */
   public void unregister() throws ServerUnregisterException {
-    debug("Call Server.delete: No arguments");
+    debug("Call Server.delete(): No arguments");
     try {
       this.nameServerService.delete(this.serviceName, this.address);
     } catch (NameServerRPCFailureException e) {
@@ -97,7 +84,7 @@ public class Server {
    * Start running the server instance and block waiting for the gRPC server termination or SIGINT.
    */
   public void run() {
-    debug("Call Server.run: No arguments");
+    debug("Call Server.run(): No arguments");
     final BindableService impl = new TuplesSpaceServiceImpl(this.state);
     // NOTE we don't check for parseInt exceptions or Runtime exceptions on [1] because everything was previously sanitized
     io.grpc.Server grpcServer = ServerBuilder.forPort(Integer.parseInt(this.address.split(":")[1])).addService(impl).build();

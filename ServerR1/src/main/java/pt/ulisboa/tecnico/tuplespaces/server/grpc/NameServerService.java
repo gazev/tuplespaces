@@ -21,13 +21,13 @@ public class NameServerService {
   }
 
   private void setup() {
-    debug("Call NameServerService.connect: No arguments");
+    debug("Call NameServerService.connect(): No arguments");
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
   public void shutdown() {
-    debug("Call NameServerService.shutdown: No arguments");
+    debug("Call NameServerService.shutdown(): No arguments");
     if (this.channel != null) this.channel.shutdown();
   }
 
@@ -52,7 +52,7 @@ public class NameServerService {
       throws NameServerRPCFailureException {
     debug(
         String.format(
-            "Call NameServerService.register: serviceName=%s, qualifier=%s, address=%s",
+            "Call NameServerService.register(): serviceName=%s, qualifier=%s, address=%s",
             serviceName, qualifier, address));
     try {
       this.stub.register(
@@ -76,7 +76,7 @@ public class NameServerService {
   public void delete(String serviceName, String address) throws NameServerRPCFailureException {
     debug(
             String.format(
-                    "Call NameServerService.delete: serviceName=%s,  address=%s",
+                    "Call NameServerService.delete(): serviceName=%s,  address=%s",
                     serviceName, address));
 
     try {

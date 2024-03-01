@@ -8,6 +8,7 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServers
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
 
 public class ClientMain {
+  public static final String serviceName = "TupleSpaces";
   public static boolean DEBUG_MODE = false; // debug flag
 
   public static void debug(String s) {
@@ -96,7 +97,7 @@ public class ClientMain {
 
     final String nsAddr = nsHost + ":" + nsPort;
     // entry point
-    run(nsAddr, "TupleSpaces", "");
+    run(nsAddr, serviceName, "");
   }
 
   public static void run(String nsAddr, String serviceName, String serviceQualifier) {

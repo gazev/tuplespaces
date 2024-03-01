@@ -6,14 +6,19 @@ Follow the installation process found in the root directory of the repository.
 
 ## Usage
 ```
-Usage: mvn exec:java -Dexec.args="<service> [-h] [-d]"
+Usage: mvn exec:java -Dexec.args="[ns_host] [ns_port] [-h] [-d]"
 
 Client for TupleSpace distributed network
 
 Optional positional arguments:
-    ns_host     Name server IP address (default: localhost)
-    ns_port     Name server port       (default: 5001)
+    ns_host Name server IP address (default: localhost)
+    ns_port Name server port       (default: 5001)
 Options:
-    -h, --help  Show this message and exit
-    -d, --debug Run in debug mode
+    -h, --help   Show this message and exit
+    -d, --debug  Run in debug mode
 ```
+
+## Notes
+
+The "TupleSpaces" service name is a static variable that is shipped with the program.
+The default values for optional arguments are defined at the start of the main function.

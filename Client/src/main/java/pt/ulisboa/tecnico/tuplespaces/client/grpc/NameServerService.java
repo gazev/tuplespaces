@@ -33,28 +33,31 @@ public class NameServerService {
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
-  /** Perform shutdown logic. */
+  /** Perform name server shutdown logic. */
   public void shutdown() {
     debug("Call NameServerService.shutdown()");
     this.channel.shutdown();
   }
 
-  /** Class meant to encapsulate a ServiceEntry protobuf message. */
+  /**
+   * Class meant to mirror a ServiceEntry protobuf message that we can expand on without relying on
+   * protobuf generated classes
+   */
   public static class ServiceEntry {
+    private final String address; // service address
     private final String qualifier; // service qualifier (e.g "A", "B", "C")
-    private final String address;   // service address
 
-    public ServiceEntry(String qualifier, String address) {
-      this.qualifier = qualifier;
+    public ServiceEntry(String address, String qualifier) {
       this.address = address;
-    }
-
-    public String getQualifier() {
-      return qualifier;
+      this.qualifier = qualifier;
     }
 
     public String getAddress() {
       return address;
+    }
+
+    public String getQualifier() {
+      return qualifier;
     }
   }
 
@@ -62,16 +65,17 @@ public class NameServerService {
    * NameServer service 'lookup' gRPC wrapper.
    *
    * @param serviceName procedure ServiceName argument
-   * @param qualifier   procedure Qualifier argument
+   * @param qualifier procedure Qualifier argument
    * @return list of fetched ServiceEntries
-   * @throws NameServerException on RPC failure or if no servers are available for the given
-   *     parameters
+   * @throws NameServerRPCFailureException on RPC failure
+   * @throws NameServerNoServersException if name server returns an empty list
    */
   public List<ServiceEntry> lookup(String serviceName, String qualifier)
       throws NameServerRPCFailureException, NameServerNoServersException {
     debug(
         String.format(
-            "Call NameServerService.lookup(): serviceName=%s, qualifier=%s", serviceName, qualifier));
+            "Call NameServerService.lookup(): serviceName=%s, qualifier=%s",
+            serviceName, qualifier));
     NameServerOuterClass.LookupResponse response = null;
     try {
       response =
@@ -94,7 +98,7 @@ public class NameServerService {
     }
 
     return serversEntries.stream()
-        .map(entry -> new ServiceEntry(entry.getQualifier(), entry.getServiceAddress()))
+        .map(entry -> new ServiceEntry(entry.getServiceAddress(), entry.getQualifier()))
         .collect(Collectors.toList());
   }
 }

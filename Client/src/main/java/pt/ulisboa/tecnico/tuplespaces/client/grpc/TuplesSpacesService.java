@@ -15,8 +15,9 @@ public class TuplesSpacesService {
 
   /** ServerEntry class represents a gRPC server of the TupleSpaces network */
   public static class ServerEntry {
-    public final String address;   // server address
     public final String qualifier; // server qualifier
+    public final String address;   // server address
+
     public ManagedChannel channel;
     public TupleSpacesGrpc.TupleSpacesBlockingStub stub;
 
@@ -29,7 +30,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug("Call ServerService.connect()");
+      debug("Call ServerService.setup()");
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
     }
@@ -42,15 +43,14 @@ public class TuplesSpacesService {
       return this.qualifier;
     }
 
-    /** Server shutdown logic */
+    /** Perform server shutdown logic */
     public void shutdown() {
       debug("Call ServerService.shutdown()");
       this.channel.shutdown();
     }
   }
 
-  private ServerEntry server; // server we are talking to, only one now, TODO change for second phase
-
+  private ServerEntry server; // server we are talking to, only one now, TODO prob change with list for second phase
   /**
    * Constructor when no services are found
    */
@@ -58,23 +58,39 @@ public class TuplesSpacesService {
   }
 
   /**
-   * Constructor when we already have servers
+   * Constructor when we already fetched servers from the name server
    *
-   * @param serverEntries ServiceEntry list with all available servers fetched from name server
+   * @param serverEntries ServiceEntry list with all available servers
    */
   public TuplesSpacesService(List<NameServerService.ServiceEntry> serverEntries) {
     setServer(serverEntries);
   }
 
-  /** Returns true if there are servers currently available
-   *  TODO in second phase check if list is empty
+  /**
+   * Set the Server the client is talking to
+   * // TODO prob replace for addServer in second phase
+   *
+   * @param serverEntries List of server entries retrieved from name server lookup procedure
+   */
+  public void setServer(List<NameServerService.ServiceEntry> serverEntries) {
+    this.server = new ServerEntry(serverEntries.get(0).getAddress(), serverEntries.get(0).getQualifier());
+  }
+
+  // TODO prob receive qualifier argument in second phase
+  public ServerEntry getServer() {
+    return this.server;
+  }
+
+  /**
+   *  Returns true if there are servers currently available
+   *  TODO prob check if list is empty in second phase
    */
   public boolean hasServers() {
     return this.server != null;
   }
 
   /** Remove current server in use
-   * TODO in second phase remove by index or qualifier
+   * TODO prob receive qualifier argument in second phase
    * */
   public void removeCurrentServer() {
     debug("Call TupleSpacesService.removeCurrentServer()");
@@ -85,25 +101,8 @@ public class TuplesSpacesService {
   }
 
   /**
-   * Set the Server the client is talking to
-   * // TODO replace with addServer for second phase
-   *
-   * @param serverEntries List of server entries retrieved from name server lookup procedure
-   */
-  public void setServer(List<NameServerService.ServiceEntry> serverEntries) {
-    this.server = new ServerEntry(serverEntries.get(0).getAddress(), serverEntries.get(0).getQualifier());
-  }
-
-  /**
-   * // TODO receive qualifier as identifier or index
-   */
-  public ServerEntry getServer() {
-    return this.server;
-  }
-
-  /**
    * Perform shutdown logic
-   * // TODO shutdown all servers in second phase
+   * // TODO prob shutdown all servers in second phase without remove
    */
   public void shutdown() {
     debug("Call TupleSpacesService.shutdown()");

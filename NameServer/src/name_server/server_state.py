@@ -35,7 +35,7 @@ class NameServerState:
 
         # check if service entry is already registered
         for el in self._name_lookup_table[name]:
-            if el.addr == service_entry.addr:
+            if el == service_entry:
                 return True
         
         return False

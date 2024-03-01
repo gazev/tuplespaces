@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.tuplespaces.client;
 
 import java.util.Scanner;
 
+import static pt.ulisboa.tecnico.tuplespaces.client.Client.rpcRetry;
+
 public class CommandProcessor {
 
   private static final String SPACE = " ";
@@ -81,7 +83,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.invoke_remote_command(PUT, tuple);
+    client.invoke_remote_command(PUT, tuple, rpcRetry);
   }
 
   private void read(String[] split) {
@@ -94,7 +96,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.invoke_remote_command(READ, tuple);
+    client.invoke_remote_command(READ, tuple, rpcRetry);
   }
 
   private void take(String[] split) {
@@ -106,7 +108,7 @@ public class CommandProcessor {
 
     String tuple = split[1];
 
-    client.invoke_remote_command(TAKE, tuple);
+    client.invoke_remote_command(TAKE, tuple, rpcRetry);
   }
 
   private void getTupleSpacesState(String[] split) {
@@ -117,7 +119,7 @@ public class CommandProcessor {
 
     String qualifier = split[1];
 
-    client.invoke_remote_command(GET_TUPLE_SPACES_STATE, qualifier);
+    client.invoke_remote_command(GET_TUPLE_SPACES_STATE, qualifier, rpcRetry);
   }
 
   private void sleep(String[] split) {

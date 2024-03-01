@@ -34,6 +34,14 @@ public class TuplesSpacesService {
       this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
     }
 
+    public String getAddress() {
+      return this.address;
+    }
+
+    public String getQualifier() {
+      return this.qualifier;
+    }
+
     /** Server shutdown logic */
     public void shutdown() {
       debug("Call ServerService.shutdown()");
@@ -41,8 +49,7 @@ public class TuplesSpacesService {
     }
   }
 
-  private ServerEntry
-      server; // server we are talking to, only one now, TODO change for second phase
+  private ServerEntry server; // server we are talking to, only one now, TODO change for second phase
 
   /**
    * Constructor when no services are found
@@ -59,6 +66,24 @@ public class TuplesSpacesService {
     setServer(serverEntries);
   }
 
+  /** Returns true if there are servers currently available
+   *  TODO in second phase check if list is empty
+   */
+  public boolean hasServers() {
+    return this.server != null;
+  }
+
+  /** Remove current server in use
+   * TODO in second phase remove by index or qualifier
+   * */
+  public void removeCurrentServer() {
+    debug("Call TupleSpacesService.removeCurrentServer()");
+    if (hasServers()) {
+      this.server.shutdown();
+      this.server = null;
+    }
+  }
+
   /**
    * Set the Server the client is talking to
    * // TODO replace with addServer for second phase
@@ -69,27 +94,19 @@ public class TuplesSpacesService {
     this.server = new ServerEntry(serverEntries.get(0).getAddress(), serverEntries.get(0).getQualifier());
   }
 
-  /** Returns true if there are servers currently available
-   *  TODO in second phase check if list is empty
+  /**
+   * // TODO receive qualifier as identifier or index
    */
-  public boolean hasServers() {
-    return this.server == null;
+  public ServerEntry getServer() {
+    return this.server;
   }
 
-  /** Remove current server in use
-   * TODO in second phase remove by index or element
-   * */
-  public void removeCurrentServer() {
-    debug("TupleSpacesService.removeCurrentServer()");
-    if (hasServers()) {
-      this.server.shutdown();
-      this.server = null;
-    }
-  }
-
-  /** Perform shutdown logic */
+  /**
+   * Perform shutdown logic
+   * // TODO shutdown all servers in second phase
+   */
   public void shutdown() {
-    debug("TupleSpacesService.shutdown()");
+    debug("Call TupleSpacesService.shutdown()");
     removeCurrentServer();
   }
 

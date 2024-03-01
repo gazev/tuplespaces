@@ -71,6 +71,11 @@ public class ClientMain {
       }
     }
 
+    // print arguments if in debug
+    debug("Running with arguments:");
+    debug(String.format("ns_host: %s", nsHost));
+    debug(String.format("ns_port: %s", nsPort));
+
     // validate port argument
     int nsPortInt;
     try {
@@ -91,7 +96,7 @@ public class ClientMain {
     }
 
     final String nsAddr = nsHost + ":" + nsPort;
-
+    // entry point
     run(nsAddr, "TupleSpaces", "");
   }
 
@@ -119,5 +124,6 @@ public class ClientMain {
     parser.parseInput();
     // perform shutdown logic
     client.shutdown();
+    System.exit(0);
   }
 }

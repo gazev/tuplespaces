@@ -1,13 +1,11 @@
 package pt.ulisboa.tecnico.tuplespaces.server;
 
-import pt.ulisboa.tecnico.tuplespaces.server.exceptions.ServerRegisterException;
 import pt.ulisboa.tecnico.tuplespaces.server.grpc.NameServerService;
 
 import static java.lang.Math.pow;
 
 public class ServerMain {
   private static final String serviceName = "TupleSpaces"; // service name (invariant)
-  private static final String nameServerAddr = "localhost:5001"; // hardcoded address of name server
   private static boolean DEBUG_MODE = false; // debug flag
 
   /**
@@ -41,6 +39,7 @@ public class ServerMain {
   }
 
   public static void main(String[] args) {
+    // default optional arguments
     String host = "localhost";
     String nsHost = "localhost";
     String nsPort = "5001";
@@ -56,10 +55,9 @@ public class ServerMain {
       System.exit(1);
     }
 
+    // parse arguments
     String qualifier = null;
     String port = null;
-
-    // parse arguments
     for (int i = 0; i < args.length; i++) {
       if (args[i].startsWith("-")) { // validate options
         switch (args[i]) {
@@ -103,12 +101,15 @@ public class ServerMain {
       System.exit(1);
     }
 
-    // print arguments if in DEBUG_MODE
-    for (int i = 0; i < args.length; ++i) {
-      debug(String.format("Argument %d: %s", i, args[i]));
-    }
+    // print arguments if in debug
+    debug("Running with arguments:");
+    debug(String.format("port: %s", port));
+    debug(String.format("qualifier: %s", qualifier));
+    debug(String.format("host: %s", host));
+    debug(String.format("ns_host: %s", nsHost));
+    debug(String.format("ns_port: %s", nsPort));
 
-    // validate port argument
+    // validate arguments
     int portInt;
     try {
       portInt = Integer.parseInt(port);
@@ -122,7 +123,7 @@ public class ServerMain {
       return;
     }
 
-    // validate ns port argument
+    // validate name server port argument
     int nsPortInt;
     try {
       nsPortInt = Integer.parseInt(nsPort);
@@ -136,11 +137,10 @@ public class ServerMain {
       return;
     }
 
-    String serverAddr = host + ":" + port;
-    String nsAddr = nsHost + ":" + nsPort;
-
+    final String serverAddr = host + ":" + port;
+    final String nsAddr = nsHost + ":" + nsPort;
     // entry point
-    run("TupleSpaces", serverAddr, qualifier, nsAddr);
+    run(ServerMain.serviceName, serverAddr, qualifier, nsAddr);
   }
 
   /**
@@ -155,16 +155,7 @@ public class ServerMain {
     NameServerService nameServerService = new NameServerService(nsAddr);
     // injects NameServerService in Server object
     Server server = new Server(serviceName, serverAddr, qualifier, nameServerService);
-    try {
-      // register server in name server
-      server.register();
-    } catch (ServerRegisterException e) {
-      System.err.println("[ERROR] Failed registering server");
-      System.err.println("[ERROR] " + e.getMessage());
-      nameServerService.shutdown();
-      return;
-    }
-
     server.run(); // blocks running gRPC server
+    System.exit(0);
   }
 }

@@ -15,6 +15,9 @@ class ServiceEntry:
 
         :raises InvalidServiceEntry: If address doesn't follow the expected format. 
         """
+        if not self.qual: # don't accept empty string as qualifier
+            raise InvalidServiceEntry('Qualifier cannot be an empty string')
+
         ServiceEntry.is_valid_addr(self.addr)
    
     @staticmethod

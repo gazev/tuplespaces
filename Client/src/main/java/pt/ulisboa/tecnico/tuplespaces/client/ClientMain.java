@@ -3,6 +3,8 @@ package pt.ulisboa.tecnico.tuplespaces.client;
 import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.*;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
 
 import static java.lang.Math.pow;
 
@@ -94,34 +96,28 @@ public class ClientMain {
   }
 
   public static void run(String nsAddr, String serviceName, String serviceQualifier) {
-    NameServerService nameServer = new NameServerService(nsAddr);
+    TuplesSpacesService tuplesSpacesService;
+
+    NameServerService nameServerService = new NameServerService(nsAddr);
     List<NameServerService.ServiceEntry> serverEntries = null;
     try {
-      serverEntries = nameServer.lookup(serviceName, serviceQualifier);
-    } catch (NameServerException e) {
-      System.err.println("[ERROR] Failed finding servers");
+      serverEntries = nameServerService.lookup(serviceName, serviceQualifier);
+      tuplesSpacesService = new TuplesSpacesService(serverEntries);
+    } catch (NameServerNoServersException e) {
+      tuplesSpacesService = new TuplesSpacesService();
+      System.err.println("[WARN] Name server returned no servers at client startup");
+    } catch (NameServerRPCFailureException e) {
+      System.err.println("[ERROR] Failed communicating with name server");
       System.err.println("[ERROR] " + e.getMessage());
-      return;
-    } finally {
-      nameServer.shutdown();
-    }
-
-    debug("[INFO] Got " + serverEntries.size() + " servers for service " + serviceName);
-
-    ClientService client;
-    try {
-      client = new ClientService(serverEntries);
-    } catch (java.lang.IllegalArgumentException e) {
-      // TODO for second phase this should be handled inside the constructor and a custom exception
-      // should be used for the case where all servers had invalid arguments
-      System.err.println("[ERROR] Invalid server entries retreived from name server. Error: " + e .getMessage());
+      nameServerService.shutdown();
       return;
     }
 
+    Client client = new Client(serviceName, serviceQualifier, tuplesSpacesService, nameServerService);
     CommandProcessor parser = new CommandProcessor(client);
     // start reading input
     parser.parseInput();
-    // shutdown client
+    // perform shutdown logic
     client.shutdown();
   }
 }

@@ -94,6 +94,7 @@ class NameServer(pb2_grpc.NameServerServicer):
             server.wait_for_termination()
         except KeyboardInterrupt:
             print("\nSIGINT received, terminating...")
+            server.stop(grace=None).wait()
 
 
 DEBUG_MODE = False
@@ -128,5 +129,4 @@ if __name__ == '__main__':
     if DEBUG_MODE:
         print("Debug mode activated")
     
-    server = NameServer().run(args.port)
-
+    NameServer().run(args.port)

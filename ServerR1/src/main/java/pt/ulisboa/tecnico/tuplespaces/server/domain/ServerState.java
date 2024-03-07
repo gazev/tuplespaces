@@ -112,6 +112,6 @@ public class ServerState {
    * @return List of all tuples.
    */
   public synchronized List<String> getTupleSpacesState() {
-    return this.tuples;
+      return new ArrayList<>(this.tuples); // return copy of tuples list
   }
 }

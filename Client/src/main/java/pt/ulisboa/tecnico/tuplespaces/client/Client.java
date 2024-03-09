@@ -30,14 +30,14 @@ public class Client {
 
   /** Perform shutdown logic */
   public void shutdown() {
-    debug("Call Client.shutdown()");
+    debug("Call Client::shutdown");
     nameServerService.shutdown();
     tupleSpacesService.shutdown();
   }
 
   /** Remote invocation of TupleSpaces procedures entry point */
   public void invoke_remote_command(String command, String args, int retries) {
-    debug(String.format("Call Client.invoke_remote_command(): command=%s, args=%s", command, args));
+    debug(String.format("Call Client::invoke_remote_command: command=%s, args=%s", command, args));
     // if no current servers, lookup in name server
     if (!tupleSpacesService.hasServers()) {
       List<NameServerService.ServiceEntry> newServerEntries;

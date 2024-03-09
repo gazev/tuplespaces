@@ -29,7 +29,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug("Call ServerService.setup()");
+      debug("Call ServerService::setup");
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
     }
@@ -44,7 +44,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug("Call ServerService.shutdown()");
+      debug("Call ServerService::shutdown");
       this.channel.shutdown();
     }
   }
@@ -92,7 +92,7 @@ public class TuplesSpacesService {
    * TODO prob receive qualifier argument in second phase
    * */
   public void removeCurrentServer() {
-    debug("Call TupleSpacesService.removeCurrentServer()");
+    debug("Call TupleSpacesService::removeCurrentServer");
     if (hasServers()) {
       this.server.shutdown();
       this.server = null;
@@ -104,7 +104,7 @@ public class TuplesSpacesService {
    * // TODO prob shutdown all servers in second phase without remove
    */
   public void shutdown() {
-    debug("Call TupleSpacesService.shutdown()");
+    debug("Call TupleSpacesService::shutdown");
     removeCurrentServer();
   }
 
@@ -115,7 +115,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public void put(String tuple) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService.put(): tuple=" + tuple);
+    debug("Call TuplesSpacesService::put: tuple=" + tuple);
     try {
       // we ignore the return value because it's an empty response
       this.server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
@@ -133,7 +133,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService.read(): searchPattern=" + searchPattern);
+    debug("Call TuplesSpacesService::read: searchPattern=" + searchPattern);
     TupleSpacesCentralized.ReadResponse response = null;
     try {
       response =
@@ -158,7 +158,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService.take(): searchPattern=" + searchPattern);
+    debug("Call TuplesSpacesService::take: searchPattern=" + searchPattern);
     TupleSpacesCentralized.TakeResponse response = null;
     try {
       response =
@@ -181,7 +181,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure
    */
   public String getTupleSpacesState() throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService.getTupleSpacesState()");
+    debug("Call TuplesSpacesService::getTupleSpacesState");
     TupleSpacesCentralized.getTupleSpacesStateResponse response = null;
     try {
       response =

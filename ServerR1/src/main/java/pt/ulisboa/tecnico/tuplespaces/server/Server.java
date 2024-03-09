@@ -38,7 +38,7 @@ public class Server {
 
   /** Perform shutdown logic of the server. */
   public void shutdown() {
-    debug("Call Server.shutdown(): No arguments");
+    debug("Call Server:shutdown: No arguments");
     try {
       this.nameServerService.delete(
           this.serviceName, this.address); // unregister this server instance on the name server
@@ -60,7 +60,7 @@ public class Server {
    * server termination or SIGINT.
    */
   public void run() {
-    debug("Call Server.run(): No arguments");
+    debug("Call Server::run: No arguments");
     final BindableService impl = new TuplesSpaceServiceImpl(this.state);
     // NOTE we don't check for parseInt exceptions or Runtime exceptions because everything was
     // previously sanitized

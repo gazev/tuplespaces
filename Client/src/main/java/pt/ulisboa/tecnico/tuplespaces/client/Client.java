@@ -124,16 +124,15 @@ public class Client {
   /** Simply calls TupleSpacesService read, @see TupleSpacesService.read() */
   private String read(String searchPattern)
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
-    if (!isValidTupleOrSearchPattern(searchPattern))
-      throw new InvalidArgumentException("Invalid search pattern");
+    if (!isValidTupleOrSearchPattern(searchPattern)) throw new InvalidArgumentException("Invalid search pattern");
+
     return tupleSpacesService.read(searchPattern);
   }
 
   /** Simply calls TupleSpacesService take, @see TupleSpacesService.take() */
   private String take(String searchPattern)
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
-    if (!isValidTupleOrSearchPattern(searchPattern))
-      throw new InvalidArgumentException("Invalid search pattern");
+    if (!isValidTupleOrSearchPattern(searchPattern)) throw new InvalidArgumentException("Invalid search pattern");
 
     return tupleSpacesService.take(searchPattern);
   }

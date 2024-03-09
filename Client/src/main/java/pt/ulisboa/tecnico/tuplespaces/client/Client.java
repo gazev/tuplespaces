@@ -7,11 +7,13 @@ import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesStreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
+import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 
 public class Client {
   public static final int rpcRetry = 1;
@@ -116,7 +118,10 @@ public class Client {
   private String put(String tuple)
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(tuple)) throw new InvalidArgumentException("Invalid tuple");
-    tupleSpacesService.put(tuple);
+    ClientResponseCollector collector = new ClientResponseCollector();
+    for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
+      tupleSpacesService.put(tuple, server, new TupleSpacesStreamObserver<>("PUT", server.getAddress(), server.getQualifier(), collector));
+    }
 
     return "";
   }
@@ -125,8 +130,11 @@ public class Client {
   private String read(String searchPattern)
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(searchPattern)) throw new InvalidArgumentException("Invalid search pattern");
-
-    return tupleSpacesService.read(searchPattern);
+    ClientResponseCollector collector = new ClientResponseCollector();
+    for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
+      tupleSpacesService.read(searchPattern, server, new TupleSpacesStreamObserver<>("READ", server.getAddress(), server.getQualifier(), collector));
+    }
+    return collector.getResponses().get(0);
   }
 
   /** Simply calls TupleSpacesService take, @see TupleSpacesService.take() */

@@ -4,13 +4,9 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.grpc.StatusRuntimeException;
-
 import java.util.List;
-
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized;
+import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 
 /** TuplesSpacesService class encapsulates the gRPC interface of the TupleSpaces service client. */
 public class TuplesSpacesService {
@@ -18,9 +14,9 @@ public class TuplesSpacesService {
   /** ServerEntry class represents a gRPC server of the TupleSpaces network */
   public static class ServerEntry {
     public final String qualifier; // server qualifier
-    public final String address;   // server address
+    public final String address; // server address
     public ManagedChannel channel;
-    public TupleSpacesGrpc.TupleSpacesBlockingStub stub;
+    public TupleSpacesGrpc.TupleSpacesStub stub;
 
     public ServerEntry(String address, String qualifier) {
       this.address = address;
@@ -33,7 +29,7 @@ public class TuplesSpacesService {
     private void setup() {
       debug("Call ServerService::setup");
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
-      this.stub = TupleSpacesGrpc.newBlockingStub(this.channel);
+      this.stub = TupleSpacesGrpc.newStub(this.channel);
     }
 
     public String getAddress() {
@@ -58,9 +54,7 @@ public class TuplesSpacesService {
 
   private List<ServerEntry> serverEntries;
 
-  /**
-   * Constructor when no services are found
-   */
+  /** Constructor when no services are found */
   public TuplesSpacesService() {}
 
   /**
@@ -121,9 +115,7 @@ public class TuplesSpacesService {
     return this.serverEntries;
   }
 
-  /**
-   *  Returns true if there are servers currently available
-   */
+  /** Returns true if there are servers currently available */
   public boolean hasServers() {
     debug("Call TupleSpacesService::hasServers");
     return (this.serverEntries.size() > 0);
@@ -131,7 +123,7 @@ public class TuplesSpacesService {
 
   /**
    * Removes one server from the Server Entries list
-   * 
+   *
    * @param qualifier Server qualifier
    */
   public void removeSingleServer(String qualifier) {
@@ -143,9 +135,7 @@ public class TuplesSpacesService {
     }
   }
 
-  /**
-   * Removes all servers from the Server Entries list
-   */
+  /** Removes all servers from the Server Entries list */
   public void removeServers() {
     debug("Call TupleSpacesService::removeServers");
     for (ServerEntry server : this.serverEntries) {
@@ -154,9 +144,7 @@ public class TuplesSpacesService {
     }
   }
 
-  /**
-   * Perform shutdown logic
-   */
+  /** Perform shutdown logic */
   public void shutdown() {
     debug("Call TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
@@ -168,96 +156,64 @@ public class TuplesSpacesService {
    * TupleSpaces 'put' gRPC wrapper.
    *
    * @param tuple String of the tuple we wish to save to the server
-   * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
    */
-  public void put(String tuple) throws TupleSpacesServiceRPCFailureException {
-    debug(String.format("Call TuplesSpacesService::put: tuple=%s", tuple));
-    for (ServerEntry server : this.serverEntries) {
-      try {
-        // we ignore the return value because it's an empty response
-        server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
-      } catch (StatusRuntimeException e) {
-        debug(e.getMessage());
-        throw new TupleSpacesServiceRPCFailureException("Put", e.getStatus().getDescription());
-      }
-    }
+  public void put(
+      String tuple, ServerEntry server, TupleSpacesStreamObserver<PutResponse> observer) {
+    debug(
+        String.format(
+            "Call TupleSpacesService::put: tuple=%s, server=%s, observer=%s",
+            tuple, server, observer));
+    server.stub.put(PutRequest.newBuilder().setNewTuple(tuple).build(), observer);
   }
 
   /**
    * TupleSpaces 'read' gRPC wrapper.
    *
-   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to read from the server.
-   * @return String representation of the tuple read from the server
-   * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
+   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
+   *     read from the given server.
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
    */
-  public String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug(String.format("Call TuplesSpacesService::read: searchPattern=%s", searchPattern));
-    TupleSpacesCentralized.ReadResponse response = null;
-    for (ServerEntry server : this.serverEntries) {
-      try {
-        response =
-            server.stub.read(
-                TupleSpacesCentralized.ReadRequest.newBuilder()
-                    .setSearchPattern(searchPattern)
-                    .build());
-      } catch (StatusRuntimeException e) {
-        debug(e.getMessage());
-        throw new TupleSpacesServiceRPCFailureException("Read", e.getStatus().getDescription());
-      }
-    }
-    // return first result
-    return response.getResult();
+  public void read(
+      String searchPattern, ServerEntry server, TupleSpacesStreamObserver<ReadResponse> observer) {
+    debug(
+        String.format(
+            "Call TuplesSpacesService::read: searchPattern=%s, server=%s, observer=%s",
+            searchPattern, server, observer));
+    server.stub.read(ReadRequest.newBuilder().setSearchPattern(searchPattern).build(), observer);
   }
 
   /**
    * TupleSpaces 'take' gRPC wrapper.
    *
-   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to read from the server.
-   * @return String representation of the tuple read from the server
-   * @return String representation of the tuple taken from the server
-   * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
+   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
+   *     read from the given server.
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
    */
-  public String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::take: searchPattern=" + searchPattern);
-    TupleSpacesCentralized.TakeResponse response = null;
-    for (ServerEntry server : this.serverEntries) {
-      try {
-        response =
-            server.stub.take(
-                TupleSpacesCentralized.TakeRequest.newBuilder()
-                    .setSearchPattern(searchPattern)
-                    .build());
-      } catch (StatusRuntimeException e) {
-        debug(e.getMessage());
-        throw new TupleSpacesServiceRPCFailureException("Take", e.getStatus().getDescription());
-      }
-    }
-    // return first result
-    return response.getResult();
+  public void take(
+      String searchPattern, ServerEntry server, TupleSpacesStreamObserver<TakeResponse> observer) {
+    debug(
+        String.format(
+            "Call TuplesSpacesService::take: searchPattern=%s, server=%s, observer=%s",
+            searchPattern, server, observer));
+    server.stub.take(TakeRequest.newBuilder().setSearchPattern(searchPattern).build(), observer);
   }
 
   /**
    * TupleSpaces 'getTupleSpacesState' gRPC wrapper.
    *
-   * @return String representation of the list with all tuples in the server
-   * @throws TupleSpacesServiceRPCFailureException on RPC failure
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
    */
-  public String getTupleSpacesState(String qualifier) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::getTupleSpacesState: qualifier=" + qualifier);
-    TupleSpacesCentralized.getTupleSpacesStateResponse response = null;
-    for (ServerEntry server : this.serverEntries) {
-      if (server.getQualifier().equals(qualifier)) {
-        try {
-          response =
-              server.stub.getTupleSpacesState(
-                  TupleSpacesCentralized.getTupleSpacesStateRequest.getDefaultInstance());
-        } catch (StatusRuntimeException e) {
-          debug(e.getMessage());
-          throw new TupleSpacesServiceRPCFailureException(
-              "GetTupleSpacesState", e.getStatus().getDescription());
-        }
-      }
-    }
-    return response.getTupleList().toString();
+  public void getTupleSpacesState(
+      ServerEntry server, TupleSpacesStreamObserver<getTupleSpacesStateResponse> observer) {
+    debug(
+        String.format(
+            "Call TuplesSpacesService::getTupleSpacesState: server=%s, observer=%s",
+            server, observer));
+    server.stub.getTupleSpacesState(getTupleSpacesStateRequest.getDefaultInstance(), observer);
   }
 }

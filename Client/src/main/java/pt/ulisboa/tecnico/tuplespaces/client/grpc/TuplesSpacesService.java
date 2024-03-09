@@ -144,13 +144,23 @@ public class TuplesSpacesService {
   }
 
   /**
+   * Removes all servers from the Server Entries list
+   */
+  public void removeServers() {
+    debug("Call TupleSpacesService::removeServers");
+    for (ServerEntry server : this.serverEntries) {
+      server.shutdown();
+      this.serverEntries.remove(server);
+    }
+  }
+
+  /**
    * Perform shutdown logic
    */
   public void shutdown() {
     debug("Call TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
       server.shutdown();
-      this.serverEntries.remove(server);
     }
   }
 

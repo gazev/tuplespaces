@@ -49,6 +49,11 @@ public class TuplesSpacesService {
       debug("Call ServerService::shutdown");
       this.channel.shutdown();
     }
+
+    @Override
+    public String toString() {
+      return String.format("{address=%s, qualifier=%s}", this.address, this.qualifier);
+    }
   }
 
   private List<ServerEntry> serverEntries;
@@ -86,7 +91,7 @@ public class TuplesSpacesService {
    * @param server ServerEntry object
    */
   public void addServer(NameServerService.ServiceEntry server) {
-    debug("Call TupleSpacesService::addServer");
+    debug(String.format("Call TupleSpacesService::addServer: serverEntry=%s", server.toString()));
     this.serverEntries.add(new ServerEntry(server.getAddress(), server.getQualifier()));
   }
 
@@ -97,6 +102,7 @@ public class TuplesSpacesService {
    * @return ServerEntry object
    */
   public ServerEntry getServer(String qualifier) {
+    debug(String.format("Call TupleSpacesService::getServer: qualifier=%s", qualifier));
     for (ServerEntry server : this.serverEntries) {
       if (server.getQualifier().equals(qualifier)) {
         return server;
@@ -106,9 +112,20 @@ public class TuplesSpacesService {
   }
 
   /**
+   * Get all servers from the Server Entries list
+   *
+   * @return List of ServerEntry objects
+   */
+  public List<ServerEntry> getServers() {
+    debug("Call TupleSpacesService::getServers");
+    return this.serverEntries;
+  }
+
+  /**
    *  Returns true if there are servers currently available
    */
   public boolean hasServers() {
+    debug("Call TupleSpacesService::hasServers");
     return (this.serverEntries.size() > 0);
   }
 
@@ -118,7 +135,7 @@ public class TuplesSpacesService {
    * @param qualifier Server qualifier
    */
   public void removeSingleServer(String qualifier) {
-    debug("Call TupleSpacesService::removeSingleServer");
+    debug(String.format("Call TupleSpacesService::removeSingleServer: qualifier=%s", qualifier));
     ServerEntry server = getServer(qualifier);
     if (server != null) {
       server.shutdown();
@@ -144,7 +161,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public void put(String tuple) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::put: tuple=" + tuple);
+    debug(String.format("Call TuplesSpacesService::put: tuple=%s", tuple));
     for (ServerEntry server : this.serverEntries) {
       try {
         // we ignore the return value because it's an empty response
@@ -164,7 +181,7 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::read: searchPattern=" + searchPattern);
+    debug(String.format("Call TuplesSpacesService::read: searchPattern=%s", searchPattern));
     TupleSpacesCentralized.ReadResponse response = null;
     for (ServerEntry server : this.serverEntries) {
       try {

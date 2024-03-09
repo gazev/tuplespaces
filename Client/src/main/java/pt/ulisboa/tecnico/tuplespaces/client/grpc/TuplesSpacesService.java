@@ -5,7 +5,9 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+
 import java.util.List;
+
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
@@ -47,14 +49,19 @@ public class TuplesSpacesService {
       debug("Call ServerService::shutdown");
       this.channel.shutdown();
     }
+
+    @Override
+    public String toString() {
+      return String.format("{address=%s, qualifier=%s}", this.address, this.qualifier);
+    }
   }
 
-  private ServerEntry server; // server we are talking to, only one now, TODO prob change with list for second phase
+  private List<ServerEntry> serverEntries;
+
   /**
    * Constructor when no services are found
    */
-  public TuplesSpacesService() {
-  }
+  public TuplesSpacesService() {}
 
   /**
    * Constructor when we already fetched servers from the name server
@@ -62,50 +69,89 @@ public class TuplesSpacesService {
    * @param serverEntries ServiceEntry list with all available servers
    */
   public TuplesSpacesService(List<NameServerService.ServiceEntry> serverEntries) {
-    setServer(serverEntries);
+    setServers(serverEntries);
   }
 
   /**
-   * Set the Server the client is talking to
-   * // TODO prob replace for addServer in second phase
+   * Add servers to the Server Entries list
    *
    * @param serverEntries List of server entries retrieved from name server lookup procedure
    */
-  public void setServer(List<NameServerService.ServiceEntry> serverEntries) {
-    this.server = new ServerEntry(serverEntries.get(0).getAddress(), serverEntries.get(0).getQualifier());
+  public void setServers(List<NameServerService.ServiceEntry> serverEntries) {
+    debug("Call TupleSpacesService::setServers");
+    this.serverEntries.clear();
+    for (NameServerService.ServiceEntry server : serverEntries) {
+      this.serverEntries.add(new ServerEntry(server.getAddress(), server.getQualifier()));
+    }
   }
 
-  // TODO prob receive qualifier argument in second phase
-  public ServerEntry getServer() {
-    return this.server;
+  /**
+   * Add a single server to the Server Entries list
+   *
+   * @param server ServerEntry object
+   */
+  public void addServer(NameServerService.ServiceEntry server) {
+    debug(String.format("Call TupleSpacesService::addServer: serverEntry=%s", server.toString()));
+    this.serverEntries.add(new ServerEntry(server.getAddress(), server.getQualifier()));
+  }
+
+  /**
+   * Get a server from the Server Entries list
+   *
+   * @param qualifier Server qualifier
+   * @return ServerEntry object
+   */
+  public ServerEntry getServer(String qualifier) {
+    debug(String.format("Call TupleSpacesService::getServer: qualifier=%s", qualifier));
+    for (ServerEntry server : this.serverEntries) {
+      if (server.getQualifier().equals(qualifier)) {
+        return server;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Get all servers from the Server Entries list
+   *
+   * @return List of ServerEntry objects
+   */
+  public List<ServerEntry> getServers() {
+    debug("Call TupleSpacesService::getServers");
+    return this.serverEntries;
   }
 
   /**
    *  Returns true if there are servers currently available
-   *  TODO prob check if list is empty in second phase
    */
   public boolean hasServers() {
-    return this.server != null;
+    debug("Call TupleSpacesService::hasServers");
+    return (this.serverEntries.size() > 0);
   }
 
-  /** Remove current server in use
-   * TODO prob receive qualifier argument in second phase
-   * */
-  public void removeCurrentServer() {
-    debug("Call TupleSpacesService::removeCurrentServer");
-    if (hasServers()) {
-      this.server.shutdown();
-      this.server = null;
+  /**
+   * Removes one server from the Server Entries list
+   * 
+   * @param qualifier Server qualifier
+   */
+  public void removeSingleServer(String qualifier) {
+    debug(String.format("Call TupleSpacesService::removeSingleServer: qualifier=%s", qualifier));
+    ServerEntry server = getServer(qualifier);
+    if (server != null) {
+      server.shutdown();
+      this.serverEntries.remove(server);
     }
   }
 
   /**
    * Perform shutdown logic
-   * // TODO prob shutdown all servers in second phase without remove
    */
   public void shutdown() {
     debug("Call TupleSpacesService::shutdown");
-    removeCurrentServer();
+    for (ServerEntry server : this.serverEntries) {
+      server.shutdown();
+      this.serverEntries.remove(server);
+    }
   }
 
   /**
@@ -115,13 +161,15 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public void put(String tuple) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::put: tuple=" + tuple);
-    try {
-      // we ignore the return value because it's an empty response
-      this.server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
-    } catch (StatusRuntimeException e) {
-      debug(e.getMessage());
-      throw new TupleSpacesServiceRPCFailureException("Put", e.getStatus().getDescription());
+    debug(String.format("Call TuplesSpacesService::put: tuple=%s", tuple));
+    for (ServerEntry server : this.serverEntries) {
+      try {
+        // we ignore the return value because it's an empty response
+        server.stub.put(TupleSpacesCentralized.PutRequest.newBuilder().setNewTuple(tuple).build());
+      } catch (StatusRuntimeException e) {
+        debug(e.getMessage());
+        throw new TupleSpacesServiceRPCFailureException("Put", e.getStatus().getDescription());
+      }
     }
   }
 
@@ -133,17 +181,19 @@ public class TuplesSpacesService {
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
   public String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::read: searchPattern=" + searchPattern);
+    debug(String.format("Call TuplesSpacesService::read: searchPattern=%s", searchPattern));
     TupleSpacesCentralized.ReadResponse response = null;
-    try {
-      response =
-          this.server.stub.read(
-              TupleSpacesCentralized.ReadRequest.newBuilder()
-                  .setSearchPattern(searchPattern)
-                  .build());
-    } catch (StatusRuntimeException e) {
-      debug(e.getMessage());
-      throw new TupleSpacesServiceRPCFailureException("Read", e.getStatus().getDescription());
+    for (ServerEntry server : this.serverEntries) {
+      try {
+        response =
+            server.stub.read(
+                TupleSpacesCentralized.ReadRequest.newBuilder()
+                    .setSearchPattern(searchPattern)
+                    .build());
+      } catch (StatusRuntimeException e) {
+        debug(e.getMessage());
+        throw new TupleSpacesServiceRPCFailureException("Read", e.getStatus().getDescription());
+      }
     }
     // return first result
     return response.getResult();
@@ -157,22 +207,26 @@ public class TuplesSpacesService {
    * @return String representation of the tuple taken from the server
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
+  /*
   public String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
     debug("Call TuplesSpacesService::take: searchPattern=" + searchPattern);
     TupleSpacesCentralized.TakeResponse response = null;
-    try {
-      response =
-          this.server.stub.take(
-              TupleSpacesCentralized.TakeRequest.newBuilder()
-                  .setSearchPattern(searchPattern)
-                  .build());
-    } catch (StatusRuntimeException e) {
-      debug(e.getMessage());
-      throw new TupleSpacesServiceRPCFailureException("Take", e.getStatus().getDescription());
+    for (ServerEntry server : this.serverEntries) {
+      try {
+        response =
+            server.stub.take(
+                TupleSpacesCentralized.TakeRequest.newBuilder()
+                    .setSearchPattern(searchPattern)
+                    .build());
+      } catch (StatusRuntimeException e) {
+        debug(e.getMessage());
+        throw new TupleSpacesServiceRPCFailureException("Take", e.getStatus().getDescription());
+      }
     }
     // return first result
     return response.getResult();
   }
+  */
 
   /**
    * TupleSpaces 'getTupleSpacesState' gRPC wrapper.
@@ -180,19 +234,22 @@ public class TuplesSpacesService {
    * @return String representation of the list with all tuples in the server
    * @throws TupleSpacesServiceRPCFailureException on RPC failure
    */
-  public String getTupleSpacesState() throws TupleSpacesServiceRPCFailureException {
-    debug("Call TuplesSpacesService::getTupleSpacesState");
+  public String getTupleSpacesState(String qualifier) throws TupleSpacesServiceRPCFailureException {
+    debug("Call TuplesSpacesService::getTupleSpacesState: qualifier=" + qualifier);
     TupleSpacesCentralized.getTupleSpacesStateResponse response = null;
-    try {
-      response =
-          this.server.stub.getTupleSpacesState(
-              TupleSpacesCentralized.getTupleSpacesStateRequest.getDefaultInstance());
-    } catch (StatusRuntimeException e) {
-      debug(e.getMessage());
-      throw new TupleSpacesServiceRPCFailureException(
-          "GetTupleSpacesState", e.getStatus().getDescription());
+    for (ServerEntry server : this.serverEntries) {
+      if (server.getQualifier().equals(qualifier)) {
+        try {
+          response =
+              server.stub.getTupleSpacesState(
+                  TupleSpacesCentralized.getTupleSpacesStateRequest.getDefaultInstance());
+        } catch (StatusRuntimeException e) {
+          debug(e.getMessage());
+          throw new TupleSpacesServiceRPCFailureException(
+              "GetTupleSpacesState", e.getStatus().getDescription());
+        }
+      }
     }
-
     return response.getTupleList().toString();
   }
 }

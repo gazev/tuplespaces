@@ -1,9 +1,9 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
 import static pt.ulisboa.tecnico.tuplespaces.client.Client.RPC_RETRIES;
-import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 
 import java.util.Scanner;
+import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 
 public class CommandProcessor {
 
@@ -153,8 +153,14 @@ public class CommandProcessor {
       this.printUsage();
       return;
     }
-    String qualifier = split[1];
-    int time;
+
+    int qualifier = indexOfServerQualifier(split[1]);
+    if (qualifier == -1) {
+      System.out.println("Invalid server qualifier");
+      return;
+    }
+
+    Integer time;
 
     // checks if input String can be parsed as an Integer
     try {
@@ -164,12 +170,19 @@ public class CommandProcessor {
       return;
     }
 
-    int delay = orderedDelayer.setDelay(qualifier.hashCode(), time);
+    client.setDelay(qualifier, time);
+  }
 
-    if (delay != -1) {
-        System.out.println("Delay set for server " + qualifier + ": " + delay + " seconds");
-    } else {
-        System.out.println("Server " + qualifier + " not found");
+  private int indexOfServerQualifier(String qualifier) {
+    switch (qualifier) {
+      case "A":
+        return 0;
+      case "B":
+        return 1;
+      case "C":
+        return 2;
+      default:
+        return -1;
     }
   }
 

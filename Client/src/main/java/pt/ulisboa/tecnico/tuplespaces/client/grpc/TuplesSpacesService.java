@@ -4,8 +4,8 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
@@ -29,7 +29,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug(String.format("Call ServerService::setup %s", this));
+      debug(String.format("Call ServerEntry::setup %s", this));
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newStub(this.channel);
     }
@@ -44,7 +44,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug(String.format("Call ServerService::shutdown %s", this));
+      debug(String.format("Call ServerEntry::shutdown %s", this));
       this.channel.shutdown();
     }
 
@@ -71,14 +71,14 @@ public class TuplesSpacesService {
   /**
    * Add servers to the Server Entries list
    *
-   * @param serverEntries List of server entries retrieved from name server lookup procedure
+   * @param serviceEntries List of service entries retrieved from name server lookup procedure
    */
-  public void setServers(List<NameServerService.ServiceEntry> serverEntries) {
+  public void setServers(List<NameServerService.ServiceEntry> serviceEntries) {
     debug("Call TupleSpacesService::setServers");
-    this.serverEntries.clear();
-    for (NameServerService.ServiceEntry server : serverEntries) {
-      this.serverEntries.add(new ServerEntry(server.getAddress(), server.getQualifier()));
-    }
+    for (NameServerService.ServiceEntry service : serviceEntries)
+      this.serverEntries.add(new ServerEntry(service.getAddress(), service.getQualifier()));
+
+    this.serverEntries.sort(Comparator.comparing(ServerEntry::getQualifier));
   }
 
   /**
@@ -92,7 +92,7 @@ public class TuplesSpacesService {
   }
 
   /**
-   * Get a server from the Server Entries list
+   * Get a server from the Server Entries list by its qualifier
    *
    * @param qualifier Server qualifier
    * @return ServerEntry object
@@ -105,6 +105,17 @@ public class TuplesSpacesService {
       }
     }
     return null;
+  }
+
+  /**
+   * Get a server from the Server Entries by index
+   *
+   * @param qualifier Server qualifier
+   * @return ServerEntry object
+   */
+  public ServerEntry getServer(Integer index) {
+    debug(String.format("Call TupleSpacesService::getServer: index=%s", index));
+    return serverEntries.get(index);
   }
 
   /**
@@ -139,16 +150,16 @@ public class TuplesSpacesService {
 
   /** Removes all servers from the Server Entries list */
   public void removeServers() {
-    for (ServerEntry server : this.serverEntries)
-      server.shutdown();
+    debug("Call TupleSpacesService::removeServers");
+    for (ServerEntry server : this.serverEntries) server.shutdown();
 
     serverEntries = new ArrayList<>();
   }
 
   /** Perform shutdown logic */
   public void shutdown() {
+    debug("Call TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
-      debug(String.format("Call TupleSpacesService::shutdown: server=%s", server.toString()));
       server.shutdown();
     }
   }

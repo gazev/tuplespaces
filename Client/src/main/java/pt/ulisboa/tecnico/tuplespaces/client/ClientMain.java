@@ -33,7 +33,7 @@ public class ClientMain {
 
   public static void main(String[] args) {
     String nsHost = "localhost"; // default ns_host argument value
-    String nsPort = "5001";      // default ns_port argument value
+    String nsPort = "5001"; // default ns_port argument value
 
     // check for too much arguments (it will make no sense of positional arguments)
     if (args.length > 3) {
@@ -85,7 +85,7 @@ public class ClientMain {
       }
     } catch (NumberFormatException e) {
       System.err.println(
-              "Invalid 'port' argument, expected an integer in valid port range, got " + nsPort);
+          "Invalid 'port' argument, expected an integer in valid port range, got " + nsPort);
       printUsage();
       return;
     }
@@ -118,7 +118,8 @@ public class ClientMain {
       return;
     }
 
-    Client client = new Client(serviceName, serviceQualifier, tuplesSpacesService, nameServerService);
+    Client client =
+        new Client(serviceName, serviceQualifier, tuplesSpacesService, nameServerService);
     CommandProcessor parser = new CommandProcessor(client);
     // start reading input
     parser.parseInput();

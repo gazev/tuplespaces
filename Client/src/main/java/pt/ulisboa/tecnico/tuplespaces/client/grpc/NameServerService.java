@@ -5,7 +5,6 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
-
 import java.util.List;
 import java.util.stream.Collectors;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
@@ -34,15 +33,20 @@ public class NameServerService {
 
   /** Create channel and stub for name server. */
   private void setup() {
-    debug("Call NameServerService::connect");
+    debug(String.format("Call NameServerService::connect %s", this));
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
   /** Perform name server shutdown logic. */
   public void shutdown() {
-    debug("Call NameServerService::shutdown");
+    debug(String.format("Call NameServerService::shutdown %s", this));
     this.channel.shutdown();
+  }
+
+  @Override
+  public String toString() {
+    return String.format("{address=%s}", address);
   }
 
   /**
@@ -80,8 +84,8 @@ public class NameServerService {
       throws NameServerRPCFailureException, NameServerNoServersException {
     debug(
         String.format(
-            "Call NameServerService::lookup: serviceName=%s, qualifier=%s",
-            serviceName, qualifier));
+            "Call NameServerService::lookup %s: serviceName=%s, qualifier=%s",
+            this, serviceName, qualifier));
     NameServerOuterClass.LookupResponse response = null;
     try {
       response =

@@ -84,7 +84,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.invoke_remote_command(PUT, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(PUT, tuple, rpcRetry);
   }
 
   private void read(String[] split) {
@@ -97,7 +97,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.invoke_remote_command(READ, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(READ, tuple, rpcRetry);
   }
 
   private void take(String[] split) {
@@ -109,7 +109,7 @@ public class CommandProcessor {
 
     String tuple = split[1];
 
-    client.invoke_remote_command(TAKE, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(TAKE, tuple, rpcRetry);
   }
 
   private void getTupleSpacesState(String[] split) {
@@ -120,7 +120,7 @@ public class CommandProcessor {
 
     String qualifier = split[1];
 
-    client.invoke_remote_command(GET_TUPLE_SPACES_STATE, qualifier, rpcRetry);
+    client.executeTupleSpacesCommand(GET_TUPLE_SPACES_STATE, qualifier, rpcRetry);
   }
 
   private void sleep(String[] split) {

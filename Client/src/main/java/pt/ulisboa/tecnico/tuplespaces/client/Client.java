@@ -143,7 +143,7 @@ public class Client {
    */
   private String getTupleSpacesState(String serviceQualifier)
       throws TupleSpacesServiceRPCFailureException {
-    return tupleSpacesService.getTupleSpacesState();
+    return tupleSpacesService.getTupleSpacesState(serviceQualifier);
   }
 
   /**

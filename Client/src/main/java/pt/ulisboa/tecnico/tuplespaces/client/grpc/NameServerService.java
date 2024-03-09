@@ -28,6 +28,10 @@ public class NameServerService {
     setup();
   }
 
+  public String getAddress() {
+    return address;
+  }
+
   /** Create channel and stub for name server. */
   private void setup() {
     debug("Call NameServerService::connect");

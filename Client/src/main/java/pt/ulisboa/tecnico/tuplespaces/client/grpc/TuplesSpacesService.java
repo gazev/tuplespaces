@@ -29,7 +29,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug("Call ServerEntry::setup");
+      debug(String.format("Call ServerService::setup %s", this));
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newStub(this.channel);
     }
@@ -44,7 +44,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug("Call ServerEntry::shutdown");
+      debug(String.format("Call ServerService::shutdown %s", this));
       this.channel.shutdown();
     }
 
@@ -120,7 +120,7 @@ public class TuplesSpacesService {
   /** Returns true if there are servers currently available */
   public boolean hasServers() {
     debug("Call TupleSpacesService::hasServers");
-    return (this.serverEntries.size() > 0);
+    return (!this.serverEntries.isEmpty());
   }
 
   /**
@@ -139,8 +139,7 @@ public class TuplesSpacesService {
 
   /** Removes all servers from the Server Entries list */
   public void removeServers() {
-    debug("Call TupleSpacesService::removeServers");
-    for (ServerEntry server : serverEntries)
+    for (ServerEntry server : this.serverEntries)
       server.shutdown();
 
     serverEntries = new ArrayList<>();
@@ -148,8 +147,8 @@ public class TuplesSpacesService {
 
   /** Perform shutdown logic */
   public void shutdown() {
-    debug("Call TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
+      debug(String.format("Call TupleSpacesService::shutdown: server=%s", server.toString()));
       server.shutdown();
     }
   }

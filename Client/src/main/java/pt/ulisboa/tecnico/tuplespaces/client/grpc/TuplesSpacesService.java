@@ -217,7 +217,6 @@ public class TuplesSpacesService {
    * @return String representation of the tuple taken from the server
    * @throws TupleSpacesServiceRPCFailureException on RPC failure or invalid request parameters
    */
-  /*
   public String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
     debug("Call TuplesSpacesService::take: searchPattern=" + searchPattern);
     TupleSpacesCentralized.TakeResponse response = null;
@@ -236,7 +235,6 @@ public class TuplesSpacesService {
     // return first result
     return response.getResult();
   }
-  */
 
   /**
    * TupleSpaces 'getTupleSpacesState' gRPC wrapper.

@@ -27,7 +27,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug("Call ServerService::setup");
+      debug(String.format("Call ServerService::setup: serverEntry=%s", this.toString()));
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newStub(this.channel);
     }
@@ -42,7 +42,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug("Call ServerService::shutdown");
+      debug(String.format("Call ServerService::shutdown: serverEntry=%s", this.toString()));
       this.channel.shutdown();
     }
 
@@ -137,8 +137,8 @@ public class TuplesSpacesService {
 
   /** Removes all servers from the Server Entries list */
   public void removeServers() {
-    debug("Call TupleSpacesService::removeServers");
     for (ServerEntry server : this.serverEntries) {
+      debug(String.format("Call TupleSpacesService::removeServers: server=%s", server.toString()));
       server.shutdown();
       this.serverEntries.remove(server);
     }
@@ -146,8 +146,8 @@ public class TuplesSpacesService {
 
   /** Perform shutdown logic */
   public void shutdown() {
-    debug("Call TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
+      debug(String.format("Call TupleSpacesService::shutdown: server=%s", server.toString()));
       server.shutdown();
     }
   }

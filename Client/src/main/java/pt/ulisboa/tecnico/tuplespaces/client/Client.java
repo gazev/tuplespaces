@@ -122,7 +122,7 @@ public class Client {
     for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
       tupleSpacesService.put(tuple, server, new TupleSpacesStreamObserver<>("PUT", server.getAddress(), server.getQualifier(), collector));
     }
-
+    collector.waitAllResponses(tupleSpacesService.getServers().size());
     return "";
   }
 
@@ -134,6 +134,7 @@ public class Client {
     for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
       tupleSpacesService.read(searchPattern, server, new TupleSpacesStreamObserver<>("READ", server.getAddress(), server.getQualifier(), collector));
     }
+    collector.waitAllResponses(tupleSpacesService.getServers().size());
     return collector.getResponses().get(0);
   }
 

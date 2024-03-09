@@ -4,10 +4,13 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
 import java.util.List;
+import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
+import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 
 public class Client {
@@ -36,57 +39,53 @@ public class Client {
   }
 
   /** Remote invocation of TupleSpaces procedures entry point */
-  public void invoke_remote_command(String command, String args, int retries) {
-    debug(String.format("Call Client::invoke_remote_command: command=%s, args=%s", command, args));
+  public void executeTupleSpacesCommand(String command, String args, int retries) {
+    debug(
+        String.format(
+            "Call Client::executeTupleSpacesCommand: command=%s, args=%s, retries=%d",
+            command, args, retries));
     // if no current servers, lookup in name server
     if (!tupleSpacesService.hasServers()) {
       List<NameServerService.ServiceEntry> newServerEntries;
       try {
         newServerEntries = nameServerService.lookup(serviceName, serviceQualifier);
-        tupleSpacesService.setServer(newServerEntries);
+        tupleSpacesService.setServers(newServerEntries);
       } catch (NameServerRPCFailureException e) {
         System.err.printf(
             "[ERROR] Failed communicating with name server. Error: %s\n", e.getMessage());
+        debug(String.format("Name server address: %s", nameServerService.getAddress()));
         return;
       } catch (NameServerNoServersException e) {
-        System.err.println("[WARN] " + e.getMessage());
+        System.err.printf("[WARN] No servers available. Error: %s\n", e.getMessage());
+        debug(String.format("Name server address: %s", nameServerService.getAddress()));
         return;
       }
     }
 
     String result = "";
     try {
-      switch (command) {
-        case PUT:
-          put(args);
-          break;
-        case READ:
-          result = read(args);
-          break;
-        case TAKE:
-          result = take(args);
-          break;
-        case GET_TUPLE_SPACES_STATE:
-          result = getTupleSpacesState(args);
-          break;
-        default:
-          System.err.printf("Unknown command %s", command);
-          return;
-      }
-    } catch (TupleSpacesServiceRPCFailureException e) {
+      result = execute(command, args);
+    } catch (InvalidCommandException e) {
+      System.err.printf("[ERROR] Invalid command %s. Error: %s\n", command, e.getMessage());
+      return;
+    } catch (InvalidArgumentException e) {
+      System.err.printf("[ERROR] Invalid argument %s for command %s. Error: %s\n", args, command, e.getMessage());
+      return;
+    } catch (TupleSpacesServiceException e) {
       // TODO this might not be used in second phase
-      System.err.printf(
-          "[WARN] Failed procedure %s call on %s. Error: %s\n",
-          command, tupleSpacesService.getServer().getAddress(), e.getMessage());
-      tupleSpacesService.removeCurrentServer(); // remove server assumed to be shutdown or faulty
+      System.err.printf("[ERROR] Failed %s RPC. Error: %s\n", command, e.getMessage());
+      tupleSpacesService.removeServers(); // remove all servers
       if (retries != 0) {
+        System.err.println(
+                "[WARN] Assuming all servers are shutdown (specification doesn't consider faulty servers)...");
         System.err.println("[WARN] Retrying with new servers");
-        invoke_remote_command(command, args, retries - 1); // retry the operation with new lookup
+        executeTupleSpacesCommand(
+                command, args, retries - 1); // retry the operation with new lookup
         return;
       }
       System.err.printf(
-          "[ERROR] Couldn't complete %s procedure after %d attempts, procedure aborted\n",
-          command, rpcRetry + 1);
+              "[ERROR] Couldn't complete %s procedure with arguments %s after %d attempts, procedure aborted\n",
+              command, args, rpcRetry + 1);
       return;
     }
 
@@ -97,18 +96,45 @@ public class Client {
     System.out.println(); // print new line after result because thats what the examples do
   }
 
+  private String execute(String command, String args)
+      throws InvalidCommandException, InvalidArgumentException, TupleSpacesServiceException {
+    switch (command) {
+      case PUT:
+        return put(args);
+      case READ:
+        return read(args);
+      case TAKE:
+        return take(args);
+      case GET_TUPLE_SPACES_STATE:
+        return getTupleSpacesState(args);
+      default:
+        throw new InvalidCommandException("Unknown command");
+    }
+  }
+
   /** Simply calls TupleSpacesService put, @see TupleSpacesService.put() */
-  private void put(String tuple) throws TupleSpacesServiceRPCFailureException {
+  private String put(String tuple)
+      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+    if (!isValidTupleOrSearchPattern(tuple)) throw new InvalidArgumentException("Invalid tuple");
     tupleSpacesService.put(tuple);
+
+    return "";
   }
 
   /** Simply calls TupleSpacesService read, @see TupleSpacesService.read() */
-  private String read(String searchPattern) throws TupleSpacesServiceRPCFailureException {
+  private String read(String searchPattern)
+      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+    if (!isValidTupleOrSearchPattern(searchPattern))
+      throw new InvalidArgumentException("Invalid search pattern");
     return tupleSpacesService.read(searchPattern);
   }
 
   /** Simply calls TupleSpacesService take, @see TupleSpacesService.take() */
-  private String take(String searchPattern) throws TupleSpacesServiceRPCFailureException {
+  private String take(String searchPattern)
+      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+    if (!isValidTupleOrSearchPattern(searchPattern))
+      throw new InvalidArgumentException("Invalid search pattern");
+
     return tupleSpacesService.take(searchPattern);
   }
 
@@ -119,5 +145,15 @@ public class Client {
   private String getTupleSpacesState(String serviceQualifier)
       throws TupleSpacesServiceRPCFailureException {
     return tupleSpacesService.getTupleSpacesState();
+  }
+
+  /**
+   * Returns true if given string is a valid Tuple or Search Pattern
+   *
+   * @param s tuple or search pattern to be validated
+   * @return True if given `s` is valid
+   */
+  private boolean isValidTupleOrSearchPattern(String s) {
+    return s.startsWith("<") && s.endsWith(">");
   }
 }

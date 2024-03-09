@@ -3,12 +3,15 @@ package pt.ulisboa.tecnico.tuplespaces.client.util;
 import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import java.util.List;
+import java.util.ArrayList;
 
 public class ClientResponseCollector {
     List<String> responses;
     List<Exception> exceptions;
 
-    public ClientResponseCollector() {}
+    public ClientResponseCollector() {
+        this.responses = new ArrayList<>();
+    }
 
     public ClientResponseCollector(List<String> responses) {
         this.responses = responses;

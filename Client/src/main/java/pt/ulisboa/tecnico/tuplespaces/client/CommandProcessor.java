@@ -71,6 +71,7 @@ public class CommandProcessor {
           break;
       }
     }
+    scanner.close();
   }
 
   private void put(String[] split) {

@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
 import static pt.ulisboa.tecnico.tuplespaces.client.Client.rpcRetry;
+import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 
 import java.util.Scanner;
 
@@ -19,9 +20,11 @@ public class CommandProcessor {
   public static final String GET_TUPLE_SPACES_STATE = "getTupleSpacesState";
 
   private final Client client;
+  private final OrderedDelayer orderedDelayer;
 
   public CommandProcessor(Client client) {
     this.client = client;
+    this.orderedDelayer = new OrderedDelayer(3);
   }
 
   void parseInput() {
@@ -161,8 +164,13 @@ public class CommandProcessor {
       return;
     }
 
-    // register delay <time> for when calling server <qualifier>
-    System.out.println("TODO: implement setdelay command (only needed in phases 2+3)");
+    int delay = orderedDelayer.setDelay(qualifier.hashCode(), time);
+
+    if (delay != -1) {
+        System.out.println("Delay set for server " + qualifier + ": " + delay + " seconds");
+    } else {
+        System.out.println("Server " + qualifier + " not found");
+    }
   }
 
   private void printUsage() {

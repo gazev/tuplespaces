@@ -16,7 +16,8 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceR
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 
 public class Client {
-  public static final int rpcRetry = 1;
+  public static final int RPC_RETRIES = 0; // we don't retry because we assume there are no connection errors possible
+                                           // and that servers aren't faulty, but the program allows for it
   private final String serviceName;
   private final String serviceQualifier;
   private final TuplesSpacesService tupleSpacesService;
@@ -87,7 +88,7 @@ public class Client {
       }
       System.err.printf(
               "[ERROR] Couldn't complete %s procedure with arguments %s after %d attempts, procedure aborted\n",
-              command, args, rpcRetry + 1);
+              command, args, RPC_RETRIES + 1);
       return;
     }
 
@@ -115,26 +116,38 @@ public class Client {
   }
 
   /** Simply calls TupleSpacesService put, @see TupleSpacesService.put() */
-  private String put(String tuple)
-      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+  private String put(String tuple) throws TupleSpacesServiceException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(tuple)) throw new InvalidArgumentException("Invalid tuple");
     ClientResponseCollector collector = new ClientResponseCollector();
     for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
-      tupleSpacesService.put(tuple, server, new TupleSpacesStreamObserver<>("PUT", server.getAddress(), server.getQualifier(), collector));
+      tupleSpacesService.put(tuple, server, new TupleSpacesStreamObserver<>(PUT, server.getAddress(), server.getQualifier(), collector));
     }
+
     collector.waitAllResponses(tupleSpacesService.getServers().size());
-    return "";
+
+    if (!collector.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
+    }
+
+    return ""; // put doesn't print any information
   }
+
 
   /** Simply calls TupleSpacesService read, @see TupleSpacesService.read() */
   private String read(String searchPattern)
-      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+      throws InvalidArgumentException, TupleSpacesServiceException {
     if (!isValidTupleOrSearchPattern(searchPattern)) throw new InvalidArgumentException("Invalid search pattern");
     ClientResponseCollector collector = new ClientResponseCollector();
     for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
-      tupleSpacesService.read(searchPattern, server, new TupleSpacesStreamObserver<>("READ", server.getAddress(), server.getQualifier(), collector));
+      tupleSpacesService.read(searchPattern, server, new TupleSpacesStreamObserver<>(READ, server.getAddress(), server.getQualifier(), collector));
     }
-    collector.waitAllResponses(tupleSpacesService.getServers().size());
+
+    collector.waitAllResponses(1);
+
+    if (!collector.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
+    }
+
     return collector.getResponses().get(0);
   }
 
@@ -143,7 +156,8 @@ public class Client {
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(searchPattern)) throw new InvalidArgumentException("Invalid search pattern");
 
-    return tupleSpacesService.take(searchPattern);
+    // TOOD 2.2
+    return "";
   }
 
   /**
@@ -151,8 +165,27 @@ public class Client {
    * TupleSpacesService.getTupleSpacesState()
    */
   private String getTupleSpacesState(String serviceQualifier)
-      throws TupleSpacesServiceRPCFailureException {
-    return tupleSpacesService.getTupleSpacesState(serviceQualifier);
+      throws InvalidArgumentException, TupleSpacesServiceException {
+    for (TuplesSpacesService.ServerEntry server : tupleSpacesService.getServers()) {
+      if (!server.getQualifier().equals(serviceQualifier)) continue;
+
+      ClientResponseCollector collector = new ClientResponseCollector();
+      tupleSpacesService.getTupleSpacesState(
+          server,
+          new TupleSpacesStreamObserver<>(
+              GET_TUPLE_SPACES_STATE, server.getAddress(), server.getQualifier(), collector));
+
+      collector.waitAllResponses(1);
+
+      if (!collector.getExceptions().isEmpty()) {
+        throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
+      }
+
+      return collector.getResponses().get(0);
+    }
+    // if no servers with given qualifier found
+    throw new InvalidArgumentException(
+        String.format("No servers found for qualifier %s", serviceQualifier));
   }
 
   /**

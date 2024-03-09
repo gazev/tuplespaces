@@ -4,6 +4,9 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
@@ -27,7 +30,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug("Call ServerService::setup");
+      debug("Call ServerEntry::setup");
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesGrpc.newStub(this.channel);
     }
@@ -42,7 +45,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug("Call ServerService::shutdown");
+      debug("Call ServerEntry::shutdown");
       this.channel.shutdown();
     }
 
@@ -52,7 +55,7 @@ public class TuplesSpacesService {
     }
   }
 
-  private List<ServerEntry> serverEntries;
+  private List<ServerEntry> serverEntries = new ArrayList<>();
 
   /** Constructor when no services are found */
   public TuplesSpacesService() {}
@@ -138,10 +141,10 @@ public class TuplesSpacesService {
   /** Removes all servers from the Server Entries list */
   public void removeServers() {
     debug("Call TupleSpacesService::removeServers");
-    for (ServerEntry server : this.serverEntries) {
+    for (ServerEntry server : serverEntries)
       server.shutdown();
-      this.serverEntries.remove(server);
-    }
+
+    serverEntries = new ArrayList<>();
   }
 
   /** Perform shutdown logic */

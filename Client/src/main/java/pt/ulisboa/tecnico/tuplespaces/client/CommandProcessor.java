@@ -1,6 +1,6 @@
 package pt.ulisboa.tecnico.tuplespaces.client;
 
-import static pt.ulisboa.tecnico.tuplespaces.client.Client.rpcRetry;
+import static pt.ulisboa.tecnico.tuplespaces.client.Client.RPC_RETRIES;
 
 import java.util.Scanner;
 
@@ -84,7 +84,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.executeTupleSpacesCommand(PUT, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(PUT, tuple, RPC_RETRIES);
   }
 
   private void read(String[] split) {
@@ -97,7 +97,7 @@ public class CommandProcessor {
     // get the tuple
     String tuple = split[1];
 
-    client.executeTupleSpacesCommand(READ, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(READ, tuple, RPC_RETRIES);
   }
 
   private void take(String[] split) {
@@ -109,7 +109,7 @@ public class CommandProcessor {
 
     String tuple = split[1];
 
-    client.executeTupleSpacesCommand(TAKE, tuple, rpcRetry);
+    client.executeTupleSpacesCommand(TAKE, tuple, RPC_RETRIES);
   }
 
   private void getTupleSpacesState(String[] split) {
@@ -120,7 +120,7 @@ public class CommandProcessor {
 
     String qualifier = split[1];
 
-    client.executeTupleSpacesCommand(GET_TUPLE_SPACES_STATE, qualifier, rpcRetry);
+    client.executeTupleSpacesCommand(GET_TUPLE_SPACES_STATE, qualifier, RPC_RETRIES);
   }
 
   private void sleep(String[] split) {

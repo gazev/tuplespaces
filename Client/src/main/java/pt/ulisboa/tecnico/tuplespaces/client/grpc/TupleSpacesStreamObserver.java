@@ -6,7 +6,6 @@ import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.GET_TUPLE_S
 
 import io.grpc.stub.StreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 
@@ -45,10 +44,10 @@ public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
       responseRepr = ((getTupleSpacesStateResponse) response).getTupleList().toString();
     else {
       collector.saveException(
-          new TupleSpacesServiceException(
+          new TupleSpacesServiceRPCFailureException(
               String.format(
-                  "%s %s: Got unknown response type from server for procedure %s",
-                  procedureName, serverAddr, serverQual)));
+                  "From server %s %s, got unknown response type for procedure %s",
+                  serverAddr, serverQual, procedureName)));
     }
     collector.saveResponse(responseRepr);
   }
@@ -62,7 +61,7 @@ public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
     collector.saveException(
         new TupleSpacesServiceRPCFailureException(
             String.format(
-                "%s %s: Received error from server for procedure %s. Error: %s",
+                "From server %s %s, got error for procedure %s. Error: %s",
                 serverAddr, serverQual, procedureName, t.getMessage())));
   }
 

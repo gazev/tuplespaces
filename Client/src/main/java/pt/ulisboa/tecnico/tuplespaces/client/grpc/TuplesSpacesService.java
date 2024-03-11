@@ -7,8 +7,8 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesGrpc;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaGrpc;
 
 /** TuplesSpacesService class encapsulates the gRPC interface of the TupleSpaces service client. */
 public class TuplesSpacesService {
@@ -18,7 +18,7 @@ public class TuplesSpacesService {
     public final String qualifier; // server qualifier
     public final String address; // server address
     public ManagedChannel channel;
-    public TupleSpacesGrpc.TupleSpacesStub stub;
+    public TupleSpacesReplicaGrpc.TupleSpacesReplicaStub stub;
 
     public ServerEntry(String address, String qualifier) {
       this.address = address;
@@ -31,7 +31,7 @@ public class TuplesSpacesService {
     private void setup() {
       debug(String.format("Call ServerEntry::setup %s", this));
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
-      this.stub = TupleSpacesGrpc.newStub(this.channel);
+      this.stub = TupleSpacesReplicaGrpc.newStub(this.channel);
     }
 
     public String getAddress() {
@@ -198,20 +198,56 @@ public class TuplesSpacesService {
   }
 
   /**
-   * TupleSpaces 'take' gRPC wrapper.
+   * TupleSpaces 'takePhase1' gRPC wrapper.
    *
    * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
    *     read from the given server.
+   * @param clientId Client identifier
    * @param server Server where we which to invoke the RPC
    * @param observer TupleSpacesStreamObserver for async stub
    */
-  public void take(
-      String searchPattern, ServerEntry server, TupleSpacesStreamObserver<TakeResponse> observer) {
+  public void takePhase1(
+      String searchPattern, Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase1Response> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::take: searchPattern=%s, server=%s, observer=%s",
+            "Call TuplesSpacesService::takePhase1: searchPattern=%s, server=%s, observer=%s",
             searchPattern, server, observer));
-    server.stub.take(TakeRequest.newBuilder().setSearchPattern(searchPattern).build(), observer);
+    server.stub.takePhase1(
+        TakePhase1Request.newBuilder().setSearchPattern(searchPattern).setClientId(clientId).build(), observer);
+  }
+
+  /**
+   * TupleSpaces 'takePhase1Release' gRPC wrapper.
+   *
+   * @param clientId Client identifier
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
+   */
+  public void takePhase1Release(
+      Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase1ReleaseResponse> observer) {
+    debug(
+        String.format(
+            "Call TuplesSpacesService::takePhase1Release: server=%s, observer=%s",
+            server, observer));
+    server.stub.takePhase1Release(
+        TakePhase1ReleaseRequest.newBuilder().setClientId(clientId).build(), observer);
+  }
+
+  /**
+   * TupleSpaces 'takePhase2' gRPC wrapper.
+   *
+   * @param clientId Client identifier
+   * @param server Server where we which to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
+   */
+  public void takePhase2(
+      String tuple, Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase2Response> observer) {
+    debug(
+        String.format(
+            "Call TuplesSpacesService::takePhase2: server=%s, observer=%s",
+            server, observer));
+    server.stub.takePhase2(
+        TakePhase2Request.newBuilder().setTuple(tuple).setClientId(clientId).build(), observer);
   }
 
   /**

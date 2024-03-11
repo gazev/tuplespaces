@@ -35,8 +35,6 @@ public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
     String responseRepr = "";
     if (response instanceof ReadResponse && procedureName.equals(READ)) {
       responseRepr = ((ReadResponse) response).getResult();
-    } else if (response instanceof TakeResponse && procedureName.equals(TAKE)) {
-      responseRepr = ((TakeResponse) response).getResult();
     } else if (response instanceof PutResponse && procedureName.equals(PUT)) {
       // response is empty
     } else if (response instanceof getTupleSpacesStateResponse

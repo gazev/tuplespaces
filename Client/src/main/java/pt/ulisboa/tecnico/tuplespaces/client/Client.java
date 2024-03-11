@@ -23,6 +23,11 @@ import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector;
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
 
+  public static final String PHASE_1 = "PHASE_1";
+  public static final String PHASE_2 = "PHASE_2";
+  public static final String PHASE_1_RELEASE = "PHASE_1_RELEASE";
+
+
   private final Integer id;
   private final String serviceName;
   private final String serviceQualifier;
@@ -114,6 +119,8 @@ public class Client {
     System.out.println(); // print new line after result because thats what the examples do
   }
 
+
+
   private String execute(String command, String args)
       throws InvalidCommandException, InvalidArgumentException, TupleSpacesServiceException {
     switch (command) {
@@ -192,7 +199,7 @@ public class Client {
           searchPattern,
           server,
           new TupleSpacesTakeStreamObserver<>(
-              TAKE, server.getAddress(), server.getQualifier(), collector));
+              PHASE_1, server.getAddress(), server.getQualifier(), collector));
     }
 
     collector.waitAllResponses(3); // TODO: não sei se é suposto fazermos um count a partir do loop de cima ou se assumimos 3 servidores
@@ -209,12 +216,20 @@ public class Client {
             searchPattern,
             server,
             new TupleSpacesTakeStreamObserver<>(
-                TAKE, server.getAddress(), server.getQualifier(), collector));
+                PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collector));
         
         // TODO: backoff
       }
     } else {
-      return res.get(0);
+      for(Integer id : delayer) {
+        ServerEntry server = tupleSpacesService.getServer(id);
+        tupleSpacesService.takePhase2(
+            this.id,
+            searchPattern,
+            server,
+            new TupleSpacesTakeStreamObserver<>(
+                PHASE_2, server.getAddress(), server.getQualifier(), collector));
+      }
     }
   }
 

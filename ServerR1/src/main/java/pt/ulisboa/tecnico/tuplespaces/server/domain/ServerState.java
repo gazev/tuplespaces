@@ -2,6 +2,12 @@ package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import io.grpc.stub.StreamObserver;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidClient;
+import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
 
@@ -9,7 +15,44 @@ public class ServerState {
   private static final String BGN_TUPLE = "<";
   private static final String END_TUPLE = ">";
 
-  private final List<String> tuples;
+  class Tuple {
+    private final String tuple;
+    private boolean locked;
+    private Integer heldClientId;
+
+    public Tuple(String tuple) {
+      this.tuple = tuple;
+      this.locked = false;
+    }
+
+    public String getTuple() {
+      return tuple;
+    }
+
+    public Integer getHeldClientId() {
+      return heldClientId;
+    }
+
+    public boolean isUnlocked() {
+      return !locked;
+    }
+
+    public boolean isLocked() {
+      return locked;
+    }
+
+    public void lock(Integer clientId) {
+      locked = true;
+      heldClientId = clientId;
+    }
+
+    public void unlock() {
+      locked = false;
+      heldClientId = null;
+    }
+  }
+
+  private final List<Tuple> tuples;
 
   public ServerState() {
     this.tuples = new ArrayList<>();
@@ -39,9 +82,9 @@ public class ServerState {
 
     synchronized (this) {
       while (true) {
-        for (String t : this.tuples) {
-          if (t.matches(pattern)) {
-            return t;
+        for (Tuple t : this.tuples) {
+          if (t.getTuple().matches(pattern)) {
+            return t.getTuple();
           }
         }
         try {
@@ -51,6 +94,63 @@ public class ServerState {
         }
       }
     }
+  }
+
+  /**
+   * Get a list of unlocked tuples from the TupleSpace matching the given pattern.
+   *
+   * @param pattern search pattern
+   * @param clientId clientId requesting the list which will lock the retrieved tuples
+   * @return list of tuples strings
+   * @throws InvalidInputSearchPatternException if invalid search pattern is provided
+   */
+  private List<String> getUnlockedMatchingTuples(String pattern, Integer clientId)
+      throws InvalidInputSearchPatternException {
+    if (isInvalidTuple(pattern)) {
+      throw new InvalidInputSearchPatternException(pattern);
+    }
+
+    synchronized (this) {
+      return tuples.stream()
+          .filter(t -> t.isUnlocked() && t.getTuple().matches(pattern))
+          .peek(t -> t.lock(clientId))
+          .map(Tuple::getTuple)
+          .collect(Collectors.toList());
+    }
+  }
+
+  /**
+   * Unlock all tuples locked by client with clientId
+   *
+   * @param clientId with all tuples to be unlocked
+   */
+  private synchronized void unlockClientTuples(Integer clientId) {
+    tuples.stream()
+        .filter(t -> t.isLocked() && t.getHeldClientId().equals(clientId))
+        .forEach(Tuple::unlock);
+  }
+
+  /**
+   * Removes given tuple from the TupleSpace request by client with clientId
+   *
+   * @param tupleStr to be removed
+   * @param clientId requesting client ID
+   */
+  private synchronized void removeTuple(String tupleStr, Integer clientId) throws InvalidClient {
+    Tuple tuple = null;
+    for (Tuple t : tuples) {
+      if (t.isLocked() && t.getHeldClientId().equals(clientId) && t.getTuple().equals(tupleStr)) {
+        tuple = t;
+        break;
+      }
+    }
+
+    if (tuple == null) {
+      throw new InvalidClient(
+          String.format("Client %s has no access to tuple %s", clientId, tuple));
+    }
+
+    tuples.remove(tuple);
   }
 
   /**
@@ -65,7 +165,7 @@ public class ServerState {
     }
 
     synchronized (this) {
-      this.tuples.add(tuple);
+      this.tuples.add(new Tuple(tuple));
       notifyAll();
     }
   }
@@ -87,23 +187,21 @@ public class ServerState {
     }
   }
 
-  /**
-   * Remove and read a tuple from the TupleSpaces that matches the given pattern.
-   *
-   * @param pattern to be matched
-   * @return desired tuple
-   * @throws InvalidInputSearchPatternException if given pattern is invalid
-   */
-  public String take(String pattern) throws InvalidInputSearchPatternException {
+  public List<String> takePhase1(String pattern, Integer clientId)
+      throws InvalidInputSearchPatternException {
     if (isInvalidTuple(pattern)) {
       throw new InvalidInputSearchPatternException(pattern);
     }
 
-    synchronized (this) {
-      String tuple = getMatchingTuple(pattern);
-      this.tuples.remove(tuple);
-      return tuple;
-    }
+    return getUnlockedMatchingTuples(pattern, clientId);
+  }
+
+  public void takePhase1Release(Integer clientId) {
+    unlockClientTuples(clientId);
+  }
+
+  public void takePhase2(String tupleString, Integer clientId) throws InvalidClient {
+    removeTuple(tupleString, clientId);
   }
 
   /**
@@ -112,6 +210,8 @@ public class ServerState {
    * @return List of all tuples.
    */
   public synchronized List<String> getTupleSpacesState() {
-      return new ArrayList<>(this.tuples); // return copy of tuples list
+    return tuples.stream()
+        .map(Tuple::getTuple)
+        .collect(Collectors.toList()); // return copy of tuples list
   }
 }

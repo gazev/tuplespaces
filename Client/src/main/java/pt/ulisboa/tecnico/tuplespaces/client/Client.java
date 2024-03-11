@@ -4,6 +4,8 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
 import java.util.List;
+import java.util.UUID;
+
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
@@ -16,10 +18,12 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceE
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
+import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector;
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
 
+  private final Integer id;
   private final String serviceName;
   private final String serviceQualifier;
   private final TuplesSpacesService tupleSpacesService;
@@ -31,6 +35,7 @@ public class Client {
       String serviceQualifier,
       TuplesSpacesService tupleSpacesService,
       NameServerService nameServerService) {
+    this.id = randomId();
     this.serviceName = serviceName;
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
@@ -179,8 +184,38 @@ public class Client {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
-    // TOOD 2.2
-    return "";
+    TakeResponseCollector collector = new TakeResponseCollector();
+    for(Integer id : delayer) {
+      ServerEntry server = tupleSpacesService.getServer(id);
+      tupleSpacesService.takePhase1(
+          this.id,
+          searchPattern,
+          server,
+          new TupleSpacesTakeStreamObserver<>(
+              TAKE, server.getAddress(), server.getQualifier(), collector));
+    }
+
+    collector.waitAllResponses(3); // TODO: não sei se é suposto fazermos um count a partir do loop de cima ou se assumimos 3 servidores
+    if (!collector.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceRPCFailureException(collector.getExceptions().get(0).getMessage());
+    }
+
+    List<String> res = getResponsesIntersection(collector.getResponses());
+    if (res.isEmpty()) {
+      for(Integer id : delayer) {
+        ServerEntry server = tupleSpacesService.getServer(id);
+        tupleSpacesService.takePhase1Release(
+            this.id,
+            searchPattern,
+            server,
+            new TupleSpacesTakeStreamObserver<>(
+                TAKE, server.getAddress(), server.getQualifier(), collector));
+        
+        // TODO: backoff
+      }
+    } else {
+      return res.get(0);
+    }
   }
 
   /**
@@ -222,5 +257,19 @@ public class Client {
 
   public void setDelay(int qualifier, int delay) {
     delayer.setDelay(qualifier, delay);
+  }
+
+  public Integer randomId() {
+    UUID uuid = UUID.randomUUID();
+    long mostSignificantBits = uuid.getMostSignificantBits();
+    return (int) (mostSignificantBits & Integer.MAX_VALUE);
+  }
+
+  public List<String> getResponsesIntersection(List<List<String>> responses) {
+    List<String> intersection = responses.get(0);
+    for (List<String> response : responses) {
+      intersection.retainAll(response);
+    }
+    return intersection;
   }
 }

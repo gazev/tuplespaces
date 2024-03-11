@@ -41,6 +41,7 @@ public class Client {
       TuplesSpacesService tupleSpacesService,
       NameServerService nameServerService) {
     this.id = randomId();
+    System.out.println(this.id);
     this.serviceName = serviceName;
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
@@ -135,7 +136,9 @@ public class Client {
     }
   }
 
-  /** Simply calls TupleSpacesService put, @see TupleSpacesService.put() */
+  /**
+   * Simply calls TupleSpacesService put and waits on all responses, @see TupleSpacesService.put()
+   */
   private String put(String tuple) throws TupleSpacesServiceException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(tuple)) throw new InvalidArgumentException("Invalid tuple");
 
@@ -150,7 +153,6 @@ public class Client {
     }
 
     collector.waitAllResponses(tupleSpacesService.getServers().size());
-
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
     }
@@ -158,7 +160,10 @@ public class Client {
     return ""; // put doesn't print any information
   }
 
-  /** Simply calls TupleSpacesService read, @see TupleSpacesService.read() */
+  /**
+   * Simply calls TupleSpacesService read and waits for first response, @see
+   * TupleSpacesService.read()
+   */
   private String read(String searchPattern)
       throws InvalidArgumentException, TupleSpacesServiceException {
     if (!isValidTupleOrSearchPattern(searchPattern))
@@ -175,7 +180,6 @@ public class Client {
     }
 
     collector.waitAllResponses(1);
-
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
     }
@@ -190,10 +194,9 @@ public class Client {
       throw new InvalidArgumentException("Invalid search pattern");
 
     String takenTuple = null; // tuple chosen for second phase
-
     while (true) {
       // initialize phase 1
-      TakeResponseCollector collector = new TakeResponseCollector();
+      TakeResponseCollector collectorFirstPhase = new TakeResponseCollector(3);
       for (Integer id : delayer) {
         ServerEntry server = tupleSpacesService.getServer(id);
         tupleSpacesService.takePhase1(
@@ -201,24 +204,26 @@ public class Client {
             this.id,
             server,
             new TupleSpacesTakeStreamObserver<>(
-                PHASE_1, server.getAddress(), server.getQualifier(), collector));
+                PHASE_1, server.getAddress(), server.getQualifier(), collectorFirstPhase));
       }
 
-      collector.waitAllResponses(3);
-      if (!collector.getExceptions().isEmpty()) {
+      debug("Waiting on phase 1 response");
+      collectorFirstPhase.waitAllResponses();
+      if (!collectorFirstPhase.getExceptions().isEmpty()) {
         throw new TupleSpacesServiceRPCFailureException(
-            collector.getExceptions().get(0).getMessage());
+            collectorFirstPhase.getExceptions().get(0).getMessage());
       }
 
       // if we chose a tuple in phase 1 we can move to phase 2
-      List<String> res = getResponsesIntersection(collector.getResponses());
+      List<String> res = getResponsesIntersection(collectorFirstPhase.getResponses());
       if (!res.isEmpty()) {
         takenTuple = res.get(0);
         break;
       }
 
+      debug("Couldn't acquire a tuple, releasing");
       // phase 1 release if unable to acquire a tuple
-      TakeResponseCollector collectorRelease = new TakeResponseCollector();
+      TakeResponseCollector collectorRelease = new TakeResponseCollector(3);
       for (Integer id : delayer) {
         ServerEntry server = tupleSpacesService.getServer(id);
         tupleSpacesService.takePhase1Release(
@@ -228,29 +233,42 @@ public class Client {
                 PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collectorRelease));
       }
 
-      collectorRelease.waitAllResponses(3);
-      if (!collector.getExceptions().isEmpty()) {
+      debug("Waiting release response");
+      collectorRelease.waitAllResponses();
+      if (!collectorRelease.getExceptions().isEmpty()) {
         throw new TupleSpacesServiceRPCFailureException(
-                collector.getExceptions().get(0).getMessage());
+            collectorRelease.getExceptions().get(0).getMessage());
       }
 
+      debug("Entering exponential backoff value");
       // TODO: backoff
     }
 
     // phase 2
+    debug("TUPLE SELECTED " + takenTuple);
+    TakeResponseCollector collectorSecondPhase = new TakeResponseCollector(3);
     for (Integer id : delayer) {
       ServerEntry server = tupleSpacesService.getServer(id);
       tupleSpacesService.takePhase2(
-              takenTuple,
+          takenTuple,
           this.id,
           server,
           new TupleSpacesTakeStreamObserver<>(
-              PHASE_2, server.getAddress(), server.getQualifier(), collector));
+              PHASE_2, server.getAddress(), server.getQualifier(), collectorSecondPhase));
     }
+
+    debug("Waiting second phase response");
+    collectorSecondPhase.waitAllResponses();
+    if (!collectorSecondPhase.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceRPCFailureException(
+          collectorSecondPhase.getExceptions().get(0).getMessage());
+    }
+
+    return takenTuple;
   }
 
   /**
-   * Simply calls TupleSpacesService getTupleSpacesState, @see
+   * Simply TupleSpacesService getTupleSpacesState on server with specified qualifier, @see
    * TupleSpacesService.getTupleSpacesState()
    */
   private String getTupleSpacesState(String serviceQualifier)
@@ -268,7 +286,6 @@ public class Client {
             GET_TUPLE_SPACES_STATE, server.getAddress(), server.getQualifier(), collector));
 
     collector.waitAllResponses(1);
-
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
     }
@@ -286,17 +303,34 @@ public class Client {
     return s.startsWith("<") && s.endsWith(">");
   }
 
+  /**
+   * Sets delay for server with given qualifier
+   *
+   * @param qualifier server to set the delay
+   * @param delay delay in seconds
+   */
   public void setDelay(int qualifier, int delay) {
     delayer.setDelay(qualifier, delay);
   }
 
-  public Integer randomId() {
+  /**
+   * Generate a random client ID
+   *
+   * @return random int
+   */
+  private Integer randomId() {
     UUID uuid = UUID.randomUUID();
     long mostSignificantBits = uuid.getMostSignificantBits();
     return (int) (mostSignificantBits & Integer.MAX_VALUE);
   }
 
-  public List<String> getResponsesIntersection(List<List<String>> responses) {
+  /**
+   * Returns list of elements that intersect all given Lists
+   *
+   * @param responses List of lists with the common elements we want to determine
+   * @return List of all common elements
+   */
+  private List<String> getResponsesIntersection(List<List<String>> responses) {
     List<String> intersection = responses.get(0);
     for (List<String> response : responses) {
       intersection.retainAll(response);

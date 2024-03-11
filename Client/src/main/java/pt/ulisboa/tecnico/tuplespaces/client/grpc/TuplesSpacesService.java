@@ -7,8 +7,8 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaGrpc;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 
 /** TuplesSpacesService class encapsulates the gRPC interface of the TupleSpaces service client. */
 public class TuplesSpacesService {
@@ -110,8 +110,8 @@ public class TuplesSpacesService {
   /**
    * Get a server from the Server Entries by index
    *
-   * @param qualifier Server qualifier
-   * @return ServerEntry object
+   * @param index Server index (servers are alpha sorted)
+   * @return Server at given index
    */
   public ServerEntry getServer(Integer index) {
     debug(String.format("Call TupleSpacesService::getServer: index=%s", index));
@@ -207,13 +207,20 @@ public class TuplesSpacesService {
    * @param observer TupleSpacesStreamObserver for async stub
    */
   public void takePhase1(
-      String searchPattern, Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase1Response> observer) {
+      String searchPattern,
+      Integer clientId,
+      ServerEntry server,
+      TupleSpacesTakeStreamObserver<TakePhase1Response> observer) {
     debug(
         String.format(
             "Call TuplesSpacesService::takePhase1: searchPattern=%s, server=%s, observer=%s",
             searchPattern, server, observer));
     server.stub.takePhase1(
-        TakePhase1Request.newBuilder().setSearchPattern(searchPattern).setClientId(clientId).build(), observer);
+        TakePhase1Request.newBuilder()
+            .setSearchPattern(searchPattern)
+            .setClientId(clientId)
+            .build(),
+        observer);
   }
 
   /**
@@ -224,7 +231,9 @@ public class TuplesSpacesService {
    * @param observer TupleSpacesStreamObserver for async stub
    */
   public void takePhase1Release(
-      Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase1ReleaseResponse> observer) {
+      Integer clientId,
+      ServerEntry server,
+      TupleSpacesTakeStreamObserver<TakePhase1ReleaseResponse> observer) {
     debug(
         String.format(
             "Call TuplesSpacesService::takePhase1Release: server=%s, observer=%s",
@@ -241,11 +250,13 @@ public class TuplesSpacesService {
    * @param observer TupleSpacesStreamObserver for async stub
    */
   public void takePhase2(
-      String tuple, Integer clientId, ServerEntry server, TupleSpacesStreamObserver<TakePhase2Response> observer) {
+      String tuple,
+      Integer clientId,
+      ServerEntry server,
+      TupleSpacesTakeStreamObserver<TakePhase2Response> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::takePhase2: server=%s, observer=%s",
-            server, observer));
+            "Call TuplesSpacesService::takePhase2: server=%s, observer=%s", server, observer));
     server.stub.takePhase2(
         TakePhase2Request.newBuilder().setTuple(tuple).setClientId(clientId).build(), observer);
   }

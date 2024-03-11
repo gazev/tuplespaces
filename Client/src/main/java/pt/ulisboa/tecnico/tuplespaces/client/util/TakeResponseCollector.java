@@ -1,50 +1,52 @@
 package pt.ulisboa.tecnico.tuplespaces.client.util;
 
-import java.util.List;
-
 import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class TakeResponseCollector {
-    List<List<String>> responses;
-    List<Exception> exceptions;
-    
-    public TakeResponseCollector() {
-        this.responses = new ArrayList<>();
-        this.exceptions = new ArrayList<>();
-    }
+  List<List<String>> responses;
+  List<Exception> exceptions;
+  int minResponses;
 
-    public synchronized void saveException(Exception e) {
-        debug(String.format("Call TakeResponseCollector::saveException: message=%s", e.getMessage()));
-        exceptions.add(e);
-        notifyAll();
-    }
+  public TakeResponseCollector(int minResponses) {
+    this.responses = new ArrayList<>();
+    this.exceptions = new ArrayList<>();
+    this.minResponses = minResponses;
+  }
 
-    public synchronized List<Exception> getExceptions() {
-        debug("Call TakeResponseCollector::getExceptions");
-        return exceptions;
-    }
+  public synchronized List<List<String>> getResponses() {
+    return responses;
+  }
 
-    public synchronized void saveResponse(List<String> response) {
-        debug(String.format("Call TakeResponseCollector::saveResponse: response=%s", response));
-        responses.add(response);
-        notifyAll();
-    }
+  public synchronized List<Exception> getExceptions() {
+    return exceptions;
+  }
 
-    public synchronized List<List<String>> getResponses() {
-        debug("Call TakeResponseCollector::getResponses");
-        return responses;
-    }
+  public synchronized void taskDone() {
+    minResponses--;
+    notifyAll();
+  }
 
-    public synchronized void waitAllResponses(int n) {
-        debug(String.format("Call TakeResponseCollector::waitAllResponses: responseNumber=%d", n));
-        while ( (responses.size() + exceptions.size()) < n) {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+  public synchronized void saveResponse(List<String> response) {
+    debug(String.format("Call TakeResponseCollector::saveResponse: response=%s", response));
+    responses.add(response);
+  }
+
+  public synchronized void saveException(Exception e) {
+    debug(String.format("Call TakeResponseCollector::saveException: message=%s", e.getMessage()));
+    exceptions.add(e);
+  }
+
+  public synchronized void waitAllResponses() {
+    debug("Call TakeResponseCollector::waitAllResponses");
+    while (minResponses > 0) {
+      try {
+        wait();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
+  }
 }

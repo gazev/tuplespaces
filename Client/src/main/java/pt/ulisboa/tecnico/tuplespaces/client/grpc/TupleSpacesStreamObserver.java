@@ -5,9 +5,9 @@ import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.GET_TUPLE_SPACES_STATE;
 
 import io.grpc.stub.StreamObserver;
-import pt.ulisboa.tecnico.tuplespaces.centralized.contract.TupleSpacesCentralized.*;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 
 public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
   private final ClientResponseCollector collector;

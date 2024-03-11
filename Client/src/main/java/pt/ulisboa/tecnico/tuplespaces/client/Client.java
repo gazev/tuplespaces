@@ -5,11 +5,11 @@ import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
 import java.util.List;
 import java.util.UUID;
-
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesStreamObserver;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesTakeStreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService.ServerEntry;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
@@ -19,14 +19,14 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceR
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector;
+import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
 
-  public static final String PHASE_1 = "PHASE_1";
-  public static final String PHASE_2 = "PHASE_2";
-  public static final String PHASE_1_RELEASE = "PHASE_1_RELEASE";
-
+  public static final String PHASE_1 = "take phase 1";
+  public static final String PHASE_2 = "take phase 2";
+  public static final String PHASE_1_RELEASE = "take phase 1 release";
 
   private final Integer id;
   private final String serviceName;
@@ -119,8 +119,6 @@ public class Client {
     System.out.println(); // print new line after result because thats what the examples do
   }
 
-
-
   private String execute(String command, String args)
       throws InvalidCommandException, InvalidArgumentException, TupleSpacesServiceException {
     switch (command) {
@@ -185,51 +183,69 @@ public class Client {
     return collector.getResponses().get(0);
   }
 
-  /** Simply calls TupleSpacesService take, @see TupleSpacesService.take() */
+  /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
       throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
-    TakeResponseCollector collector = new TakeResponseCollector();
-    for(Integer id : delayer) {
-      ServerEntry server = tupleSpacesService.getServer(id);
-      tupleSpacesService.takePhase1(
-          this.id,
-          searchPattern,
-          server,
-          new TupleSpacesTakeStreamObserver<>(
-              PHASE_1, server.getAddress(), server.getQualifier(), collector));
-    }
+    String takenTuple = null; // tuple chosen for second phase
 
-    collector.waitAllResponses(3);
-    if (!collector.getExceptions().isEmpty()) {
-      throw new TupleSpacesServiceRPCFailureException(collector.getExceptions().get(0).getMessage());
-    }
+    while (true) {
+      // initialize phase 1
+      TakeResponseCollector collector = new TakeResponseCollector();
+      for (Integer id : delayer) {
+        ServerEntry server = tupleSpacesService.getServer(id);
+        tupleSpacesService.takePhase1(
+            searchPattern,
+            this.id,
+            server,
+            new TupleSpacesTakeStreamObserver<>(
+                PHASE_1, server.getAddress(), server.getQualifier(), collector));
+      }
 
-    List<String> res = getResponsesIntersection(collector.getResponses());
-    if (res.isEmpty()) {
-      for(Integer id : delayer) {
+      collector.waitAllResponses(3);
+      if (!collector.getExceptions().isEmpty()) {
+        throw new TupleSpacesServiceRPCFailureException(
+            collector.getExceptions().get(0).getMessage());
+      }
+
+      // if we chose a tuple in phase 1 we can move to phase 2
+      List<String> res = getResponsesIntersection(collector.getResponses());
+      if (!res.isEmpty()) {
+        takenTuple = res.get(0);
+        break;
+      }
+
+      // phase 1 release if unable to acquire a tuple
+      TakeResponseCollector collectorRelease = new TakeResponseCollector();
+      for (Integer id : delayer) {
         ServerEntry server = tupleSpacesService.getServer(id);
         tupleSpacesService.takePhase1Release(
             this.id,
-            searchPattern,
             server,
             new TupleSpacesTakeStreamObserver<>(
-                PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collector));
-        
-        // TODO: backoff
+                PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collectorRelease));
       }
-    } else {
-      for(Integer id : delayer) {
-        ServerEntry server = tupleSpacesService.getServer(id);
-        tupleSpacesService.takePhase2(
-            this.id,
-            searchPattern,
-            server,
-            new TupleSpacesTakeStreamObserver<>(
-                PHASE_2, server.getAddress(), server.getQualifier(), collector));
+
+      collectorRelease.waitAllResponses(3);
+      if (!collector.getExceptions().isEmpty()) {
+        throw new TupleSpacesServiceRPCFailureException(
+                collector.getExceptions().get(0).getMessage());
       }
+
+      // TODO: backoff
+    }
+
+    // phase 2
+    for (Integer id : delayer) {
+      ServerEntry server = tupleSpacesService.getServer(id);
+      tupleSpacesService.takePhase2(
+              takenTuple,
+          this.id,
+          server,
+          new TupleSpacesTakeStreamObserver<>(
+              PHASE_2, server.getAddress(), server.getQualifier(), collector));
     }
   }
 

@@ -8,12 +8,12 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceE
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 
 public class ClientResponseCollector {
-  List<String> responses = new ArrayList<>();
+  List<List<String>> responses = new ArrayList<>();
   List<TupleSpacesServiceException> exceptions = new ArrayList<>();
 
   public ClientResponseCollector() {}
 
-  public ClientResponseCollector(List<String> responses) {
+  public ClientResponseCollector(List<List<String>> responses) {
     this.responses = responses;
   }
 
@@ -23,13 +23,13 @@ public class ClientResponseCollector {
     notifyAll();
   }
 
-  public synchronized void saveResponse(String response) {
+  public synchronized void saveResponse(List<String> response) {
     debug(String.format("Call ClientResponseCollector::saveResponse: response=%s", response));
     responses.add(response);
     notifyAll();
   }
 
-  public synchronized List<String> getResponses() {
+  public synchronized List<List<String>> getResponses() {
     debug("Call ClientResponseCollector::getResponses");
     return new ArrayList<>(responses);
   }

@@ -202,7 +202,7 @@ public class Client {
               PHASE_1, server.getAddress(), server.getQualifier(), collector));
     }
 
-    collector.waitAllResponses(3); // TODO: não sei se é suposto fazermos um count a partir do loop de cima ou se assumimos 3 servidores
+    collector.waitAllResponses(3);
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceRPCFailureException(collector.getExceptions().get(0).getMessage());
     }

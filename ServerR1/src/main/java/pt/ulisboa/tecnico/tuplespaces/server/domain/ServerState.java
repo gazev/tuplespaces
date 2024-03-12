@@ -1,13 +1,11 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-
-import io.grpc.stub.StreamObserver;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidClient;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
 
@@ -110,10 +108,20 @@ public class ServerState {
       throw new InvalidInputSearchPatternException(pattern);
     }
 
+    Set<String> seenTuples =
+        new HashSet<>(); // used to detect duplicate tuples, since server doesn't lock duplicates
     synchronized (this) {
       return tuples.stream()
-          .filter(t -> t.isUnlocked() && t.getTuple().matches(pattern))
-          .peek(t -> t.lock(clientId))
+          .filter(
+              t ->
+                  t.isUnlocked()
+                      && t.getTuple().matches(pattern)
+                      && !seenTuples.contains(t.getTuple())) // don't add duplicates
+          .peek(
+              t -> {
+                t.lock(clientId);
+                seenTuples.add(t.getTuple());
+              })
           .map(Tuple::getTuple)
           .collect(Collectors.toList());
     }
@@ -139,9 +147,10 @@ public class ServerState {
   private synchronized void removeTuple(String tupleStr, Integer clientId) throws InvalidClient {
     Tuple tuple = null;
     for (Tuple t : tuples) {
-      if (t.isLocked() && t.getHeldClientId().equals(clientId) && t.getTuple().equals(tupleStr)) {
+      if (t.isLocked() && t.getHeldClientId().equals(clientId)) {
         t.unlock();
-        tuple = t;
+        if (t.getTuple().equals(tupleStr))
+          tuple = t;
       }
     }
 

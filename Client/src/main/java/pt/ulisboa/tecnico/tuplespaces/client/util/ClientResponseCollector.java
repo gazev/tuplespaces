@@ -19,24 +19,20 @@ public class ClientResponseCollector {
   }
 
   public synchronized void saveException(Exception e) {
-    debug(String.format("Call ClientResponseCollector::saveException: message=%s", e.getMessage()));
     exceptions.add(e);
     notifyAll();
   }
 
   public synchronized List<Exception> getExceptions() {
-    debug("Call ClientResponseCollector::getExceptions");
     return exceptions;
   }
 
   public synchronized void saveResponse(String response) {
-    debug(String.format("Call ClientResponseCollector::saveResponse: response=%s", response));
     responses.add(response);
     notifyAll();
   }
 
   public synchronized List<String> getResponses() {
-    debug("Call ClientResponseCollector::getResponses");
     return responses;
   }
 

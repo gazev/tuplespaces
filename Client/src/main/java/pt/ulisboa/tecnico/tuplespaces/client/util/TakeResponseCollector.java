@@ -30,12 +30,10 @@ public class TakeResponseCollector {
   }
 
   public synchronized void saveResponse(List<String> response) {
-    debug(String.format("Call TakeResponseCollector::saveResponse: response=%s", response));
     responses.add(response);
   }
 
   public synchronized void saveException(Exception e) {
-    debug(String.format("Call TakeResponseCollector::saveException: message=%s", e.getMessage()));
     exceptions.add(e);
   }
 

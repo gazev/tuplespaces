@@ -3,19 +3,12 @@ package pt.ulisboa.tecnico.tuplespaces.client.util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.stream.Collectors;
 
 public class OrderedDelayer implements Iterable<Integer> {
-  ArrayList<DelayPair> backupDelays;
-
   /** Save current delays before over writing them */
-  public void saveDelays() {
-    backupDelays = new ArrayList<>(orderedDelayPairs);
-  }
-
-  /** Load previosuly saved delays */
-  public void loadDelays() {
-    if (backupDelays == null) return;
-    orderedDelayPairs = new ArrayList<>(backupDelays);
+  public void resetDelays() {
+    orderedDelayPairs = new ArrayList<>();
   }
 
   class DelayPair implements Comparable<DelayPair> {

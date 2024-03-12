@@ -45,7 +45,6 @@ public class Client {
       TuplesSpacesService tupleSpacesService,
       NameServerService nameServerService) {
     this.id = randomId();
-    System.out.println(this.id);
     this.serviceName = serviceName;
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
@@ -101,7 +100,9 @@ public class Client {
           "[ERROR] Invalid argument %s for command %s. Error: %s\n", args, command, e.getMessage());
       return;
     } catch (TakeTooManyCollisionsException e) {
-      System.err.printf("[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation", BACKOFF_RETRIES);
+      System.err.printf(
+          "[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation",
+          BACKOFF_RETRIES);
       return;
     } catch (TupleSpacesServiceException e) {
       System.err.printf("[ERROR] Failed %s RPC. Error: %s\n", command, e.getMessage());
@@ -199,11 +200,11 @@ public class Client {
 
   /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
-      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException, TakeTooManyCollisionsException {
+      throws TupleSpacesServiceRPCFailureException,
+          InvalidArgumentException,
+          TakeTooManyCollisionsException {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
-
-    saveUserDelays();
 
     String takenTuple = null; // tuple chosen for second phase
     int retries = 0;
@@ -253,17 +254,20 @@ public class Client {
       }
 
       retries++;
-      int backoff_slots = new Random().nextInt((int) (Math.pow(2, retries) - 1));
-      debug(String.format("Exponential backoff time slots: %d, attempt number %s", backoff_slots, retries));
+      int backoff_slots = new Random().nextInt((int) (Math.pow(2, retries)));
+      debug(
+          String.format(
+              "Exponential backoff time slots: %d, attempt number %s", backoff_slots, retries));
       setDelay(0, backoff_slots * SLOT_DURATION);
       setDelay(1, backoff_slots * SLOT_DURATION);
       setDelay(2, backoff_slots * SLOT_DURATION);
     }
 
-    loadUserDelays();
+    resetDelays();
     if (takenTuple == null) {
       throw new TakeTooManyCollisionsException();
     }
+
     // phase 2
     debug("Selected tuple in 1st phase: " + takenTuple);
     TakeResponseCollector collectorSecondPhase = new TakeResponseCollector(3);
@@ -333,12 +337,8 @@ public class Client {
     delayer.setDelay(qualifier, delay);
   }
 
-  public void saveUserDelays() {
-    delayer.saveDelays();
-  }
-
-  public void loadUserDelays() {
-    delayer.loadDelays();
+  public void resetDelays() {
+    delayer.resetDelays();
   }
 
   /**

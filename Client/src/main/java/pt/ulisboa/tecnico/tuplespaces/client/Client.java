@@ -3,7 +3,9 @@ package pt.ulisboa.tecnico.tuplespaces.client;
 import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
@@ -23,6 +25,8 @@ import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplic
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
+  public static final int BACKOFF_RETRIES = 8;
+  public static final int SLOT_DURATION = 1; // 1 second
 
   public static final String PHASE_1 = "take phase 1";
   public static final String PHASE_2 = "take phase 2";
@@ -193,8 +197,11 @@ public class Client {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
+    saveUserDelays();
+
+    int retries = 0;
     String takenTuple = null; // tuple chosen for second phase
-    while (true) {
+    while (retries < BACKOFF_RETRIES) {
       // initialize phase 1
       TakeResponseCollector collectorFirstPhase = new TakeResponseCollector(3);
       for (Integer id : delayer) {
@@ -221,7 +228,6 @@ public class Client {
         break;
       }
 
-      debug("Couldn't acquire a tuple, releasing");
       // phase 1 release if unable to acquire a tuple
       TakeResponseCollector collectorRelease = new TakeResponseCollector(3);
       for (Integer id : delayer) {
@@ -233,16 +239,21 @@ public class Client {
                 PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collectorRelease));
       }
 
-      debug("Waiting release response");
       collectorRelease.waitAllResponses();
       if (!collectorRelease.getExceptions().isEmpty()) {
         throw new TupleSpacesServiceRPCFailureException(
             collectorRelease.getExceptions().get(0).getMessage());
       }
 
-      debug("Entering exponential backoff value");
-      // TODO: backoff
+      retries++;
+      int backoff_slots = new Random().nextInt((int) (Math.pow(2, retries) - 1));
+      debug(String.format("Exponential backoff time slots: %d, attempt number %s", backoff_slots, retries));
+      setDelay(0, backoff_slots * SLOT_DURATION);
+      setDelay(1, backoff_slots * SLOT_DURATION);
+      setDelay(2, backoff_slots * SLOT_DURATION);
     }
+
+    loadUserDelays();
 
     // phase 2
     debug("TUPLE SELECTED " + takenTuple);
@@ -313,6 +324,14 @@ public class Client {
     delayer.setDelay(qualifier, delay);
   }
 
+  public void saveUserDelays() {
+    delayer.saveDelays();
+  }
+
+  public void loadUserDelays() {
+    delayer.loadDelays();
+  }
+
   /**
    * Generate a random client ID
    *
@@ -331,9 +350,9 @@ public class Client {
    * @return List of all common elements
    */
   private List<String> getResponsesIntersection(List<List<String>> responses) {
-    List<String> intersection = responses.get(0);
-    for (List<String> response : responses) {
-      intersection.retainAll(response);
+    List<String> intersection = new ArrayList<>(responses.get(0));
+    for (List<String> list : responses) {
+      intersection.retainAll(list);
     }
     return intersection;
   }

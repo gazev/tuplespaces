@@ -140,8 +140,8 @@ public class ServerState {
     Tuple tuple = null;
     for (Tuple t : tuples) {
       if (t.isLocked() && t.getHeldClientId().equals(clientId) && t.getTuple().equals(tupleStr)) {
+        t.unlock();
         tuple = t;
-        break;
       }
     }
 

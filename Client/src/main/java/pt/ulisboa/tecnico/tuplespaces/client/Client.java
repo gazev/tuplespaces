@@ -16,16 +16,16 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService.ServerEntry;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TakeTooManyCollisionsException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
-  public static final int BACKOFF_RETRIES = 8;
+  public static final int BACKOFF_RETRIES = 6;
   public static final int SLOT_DURATION = 1; // 1 second
 
   public static final String PHASE_1 = "take phase 1";
@@ -100,6 +100,9 @@ public class Client {
       System.err.printf(
           "[ERROR] Invalid argument %s for command %s. Error: %s\n", args, command, e.getMessage());
       return;
+    } catch (TakeTooManyCollisionsException e) {
+      System.err.printf("[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation", BACKOFF_RETRIES);
+      return;
     } catch (TupleSpacesServiceException e) {
       System.err.printf("[ERROR] Failed %s RPC. Error: %s\n", command, e.getMessage());
       tupleSpacesService.removeServers(); // remove all servers
@@ -125,7 +128,10 @@ public class Client {
   }
 
   private String execute(String command, String args)
-      throws InvalidCommandException, InvalidArgumentException, TupleSpacesServiceException {
+      throws InvalidCommandException,
+          InvalidArgumentException,
+          TupleSpacesServiceException,
+          TakeTooManyCollisionsException {
     switch (command) {
       case PUT:
         return put(args);
@@ -193,14 +199,14 @@ public class Client {
 
   /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
-      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException {
+      throws TupleSpacesServiceRPCFailureException, InvalidArgumentException, TakeTooManyCollisionsException {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
     saveUserDelays();
 
-    int retries = 0;
     String takenTuple = null; // tuple chosen for second phase
+    int retries = 0;
     while (retries < BACKOFF_RETRIES) {
       // initialize phase 1
       TakeResponseCollector collectorFirstPhase = new TakeResponseCollector(3);
@@ -214,7 +220,7 @@ public class Client {
                 PHASE_1, server.getAddress(), server.getQualifier(), collectorFirstPhase));
       }
 
-      debug("Waiting on phase 1 response");
+      debug("Waiting on 1st phase responses");
       collectorFirstPhase.waitAllResponses();
       if (!collectorFirstPhase.getExceptions().isEmpty()) {
         throw new TupleSpacesServiceRPCFailureException(
@@ -239,6 +245,7 @@ public class Client {
                 PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collectorRelease));
       }
 
+      debug("Waiting on 1st phase release responses");
       collectorRelease.waitAllResponses();
       if (!collectorRelease.getExceptions().isEmpty()) {
         throw new TupleSpacesServiceRPCFailureException(
@@ -254,9 +261,11 @@ public class Client {
     }
 
     loadUserDelays();
-
+    if (takenTuple == null) {
+      throw new TakeTooManyCollisionsException();
+    }
     // phase 2
-    debug("TUPLE SELECTED " + takenTuple);
+    debug("Selected tuple in 1st phase: " + takenTuple);
     TakeResponseCollector collectorSecondPhase = new TakeResponseCollector(3);
     for (Integer id : delayer) {
       ServerEntry server = tupleSpacesService.getServer(id);
@@ -268,7 +277,7 @@ public class Client {
               PHASE_2, server.getAddress(), server.getQualifier(), collectorSecondPhase));
     }
 
-    debug("Waiting second phase response");
+    debug("Waiting on 2nd phase responses");
     collectorSecondPhase.waitAllResponses();
     if (!collectorSecondPhase.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceRPCFailureException(

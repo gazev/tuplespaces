@@ -29,7 +29,7 @@ public class TuplesSpacesService {
 
     /** Create channel and stub for given server */
     private void setup() {
-      debug(String.format("Call ServerEntry::setup %s", this));
+      debug(String.format("ServerEntry::setup %s", this));
       this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
       this.stub = TupleSpacesReplicaGrpc.newStub(this.channel);
     }
@@ -44,7 +44,7 @@ public class TuplesSpacesService {
 
     /** Perform server shutdown logic */
     public void shutdown() {
-      debug(String.format("Call ServerEntry::shutdown %s", this));
+      debug(String.format("ServerEntry::shutdown %s", this));
       this.channel.shutdown();
     }
 
@@ -74,7 +74,7 @@ public class TuplesSpacesService {
    * @param serviceEntries List of service entries retrieved from name server lookup procedure
    */
   public void setServers(List<NameServerService.ServiceEntry> serviceEntries) {
-    debug("Call TupleSpacesService::setServers");
+    debug("TupleSpacesService::setServers");
     for (NameServerService.ServiceEntry service : serviceEntries)
       this.serverEntries.add(new ServerEntry(service.getAddress(), service.getQualifier()));
 
@@ -87,7 +87,7 @@ public class TuplesSpacesService {
    * @param server ServerEntry object
    */
   public void addServer(NameServerService.ServiceEntry server) {
-    debug(String.format("Call TupleSpacesService::addServer: serverEntry=%s", server.toString()));
+    debug(String.format("TupleSpacesService::addServer: serverEntry=%s", server.toString()));
     this.serverEntries.add(new ServerEntry(server.getAddress(), server.getQualifier()));
   }
 
@@ -98,7 +98,7 @@ public class TuplesSpacesService {
    * @return ServerEntry object
    */
   public ServerEntry getServer(String qualifier) {
-    debug(String.format("Call TupleSpacesService::getServer: qualifier=%s", qualifier));
+    debug(String.format("TupleSpacesService::getServer: qualifier=%s", qualifier));
     for (ServerEntry server : this.serverEntries) {
       if (server.getQualifier().equals(qualifier)) {
         return server;
@@ -114,7 +114,6 @@ public class TuplesSpacesService {
    * @return Server at given index
    */
   public ServerEntry getServer(Integer index) {
-    debug(String.format("Call TupleSpacesService::getServer: index=%s", index));
     return serverEntries.get(index);
   }
 
@@ -124,13 +123,11 @@ public class TuplesSpacesService {
    * @return List of ServerEntry objects
    */
   public List<ServerEntry> getServers() {
-    debug("Call TupleSpacesService::getServers");
     return this.serverEntries;
   }
 
   /** Returns true if there are servers currently available */
   public boolean hasServers() {
-    debug("Call TupleSpacesService::hasServers");
     return (!this.serverEntries.isEmpty());
   }
 
@@ -140,7 +137,6 @@ public class TuplesSpacesService {
    * @param qualifier Server qualifier
    */
   public void removeSingleServer(String qualifier) {
-    debug(String.format("Call TupleSpacesService::removeSingleServer: qualifier=%s", qualifier));
     ServerEntry server = getServer(qualifier);
     if (server != null) {
       server.shutdown();
@@ -150,7 +146,6 @@ public class TuplesSpacesService {
 
   /** Removes all servers from the Server Entries list */
   public void removeServers() {
-    debug("Call TupleSpacesService::removeServers");
     for (ServerEntry server : this.serverEntries) server.shutdown();
 
     serverEntries = new ArrayList<>();
@@ -158,7 +153,7 @@ public class TuplesSpacesService {
 
   /** Perform shutdown logic */
   public void shutdown() {
-    debug("Call TupleSpacesService::shutdown");
+    debug("TupleSpacesService::shutdown");
     for (ServerEntry server : this.serverEntries) {
       server.shutdown();
     }
@@ -175,7 +170,7 @@ public class TuplesSpacesService {
       String tuple, ServerEntry server, TupleSpacesStreamObserver<PutResponse> observer) {
     debug(
         String.format(
-            "Call TupleSpacesService::put: tuple=%s, server=%s, observer=%s",
+            "TupleSpacesService::put: tuple=%s, server=%s, observer=%s",
             tuple, server, observer));
     server.stub.put(PutRequest.newBuilder().setNewTuple(tuple).build(), observer);
   }
@@ -192,7 +187,7 @@ public class TuplesSpacesService {
       String searchPattern, ServerEntry server, TupleSpacesStreamObserver<ReadResponse> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::read: searchPattern=%s, server=%s, observer=%s",
+            "TuplesSpacesService::read: searchPattern=%s, server=%s, observer=%s",
             searchPattern, server, observer));
     server.stub.read(ReadRequest.newBuilder().setSearchPattern(searchPattern).build(), observer);
   }
@@ -213,7 +208,7 @@ public class TuplesSpacesService {
       TupleSpacesTakeStreamObserver<TakePhase1Response> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::takePhase1: searchPattern=%s, server=%s, observer=%s",
+            "TuplesSpacesService::takePhase1: searchPattern=%s, server=%s, observer=%s",
             searchPattern, server, observer));
     server.stub.takePhase1(
         TakePhase1Request.newBuilder()
@@ -236,7 +231,7 @@ public class TuplesSpacesService {
       TupleSpacesTakeStreamObserver<TakePhase1ReleaseResponse> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::takePhase1Release: server=%s, observer=%s",
+            "TuplesSpacesService::takePhase1Release: server=%s, observer=%s",
             server, observer));
     server.stub.takePhase1Release(
         TakePhase1ReleaseRequest.newBuilder().setClientId(clientId).build(), observer);
@@ -256,7 +251,7 @@ public class TuplesSpacesService {
       TupleSpacesTakeStreamObserver<TakePhase2Response> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::takePhase2: server=%s, observer=%s", server, observer));
+            "TuplesSpacesService::takePhase2: server=%s, observer=%s", server, observer));
     server.stub.takePhase2(
         TakePhase2Request.newBuilder().setTuple(tuple).setClientId(clientId).build(), observer);
   }
@@ -271,7 +266,7 @@ public class TuplesSpacesService {
       ServerEntry server, TupleSpacesStreamObserver<getTupleSpacesStateResponse> observer) {
     debug(
         String.format(
-            "Call TuplesSpacesService::getTupleSpacesState: server=%s, observer=%s",
+            "TuplesSpacesService::getTupleSpacesState: server=%s, observer=%s",
             server, observer));
     server.stub.getTupleSpacesState(getTupleSpacesStateRequest.getDefaultInstance(), observer);
   }

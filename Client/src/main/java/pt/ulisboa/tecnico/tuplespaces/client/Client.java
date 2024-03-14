@@ -3,10 +3,8 @@ package pt.ulisboa.tecnico.tuplespaces.client;
 import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
@@ -22,10 +20,11 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceR
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
 import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector;
+import pt.ulisboa.tecnico.tuplespaces.client.util.TakeResponseCollector.TakeResponse;
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
-  public static final int BACKOFF_RETRIES = 6;
+  public static final int BACKOFF_RETRIES = 5;
   public static final int SLOT_DURATION = 1; // 1 second
 
   public static final String PHASE_1 = "take phase 1";
@@ -49,12 +48,12 @@ public class Client {
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
     this.nameServerService = nameServerService;
-    setDelayer(tupleSpacesService.getServers().size());
+    setDelayer(3);
   }
 
   /** Perform shutdown logic */
   public void shutdown() {
-    debug("Call Client::shutdown");
+    debug("Client::shutdown");
     nameServerService.shutdown();
     tupleSpacesService.shutdown();
   }
@@ -68,7 +67,7 @@ public class Client {
   public void executeTupleSpacesCommand(String command, String args, int retries) {
     debug(
         String.format(
-            "Call Client::executeTupleSpacesCommand: command=%s, args=%s, retries=%d",
+            "Client::executeTupleSpacesCommand: command=%s, args=%s, retries=%d",
             command, args, retries));
     // if no current servers, lookup in name server
     if (!tupleSpacesService.hasServers()) {
@@ -200,95 +199,154 @@ public class Client {
 
   /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
-      throws TupleSpacesServiceRPCFailureException,
-          InvalidArgumentException,
-          TakeTooManyCollisionsException {
+      throws TupleSpacesServiceException, InvalidArgumentException, TakeTooManyCollisionsException {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
-    String takenTuple = null; // tuple chosen for second phase
-    int retries = 0;
+    int retries = 0; // collision retry counter
+    Set<String> lockedServers = new HashSet<>(); // servers already locked
+    TakeResponseCollector collectorFirstPhase = new TakeResponseCollector();
     while (retries < BACKOFF_RETRIES) {
-      // initialize phase 1
-      TakeResponseCollector collectorFirstPhase = new TakeResponseCollector(3);
-      for (Integer id : delayer) {
-        ServerEntry server = tupleSpacesService.getServer(id);
-        tupleSpacesService.takePhase1(
-            searchPattern,
-            this.id,
-            server,
-            new TupleSpacesTakeStreamObserver<>(
-                PHASE_1, server.getAddress(), server.getQualifier(), collectorFirstPhase));
+      // phase1 request
+      takePhase1(searchPattern, lockedServers, collectorFirstPhase);
+
+      // check servers with successful lock
+      for (TakeResponse r : collectorFirstPhase.getResponses()) {
+        if (!r.getTuplesList().isEmpty()) lockedServers.add(r.getServerQual()); // locked server
       }
 
-      debug("Waiting on 1st phase responses");
-      collectorFirstPhase.waitAllResponses();
-      if (!collectorFirstPhase.getExceptions().isEmpty()) {
-        throw new TupleSpacesServiceRPCFailureException(
-            collectorFirstPhase.getExceptions().get(0).getMessage());
+      // got minority, release and backoff
+      if (lockedServers.size() <= 1) {
+        takePhase1Release(lockedServers);
+        retries++;
+        int backoff_slots = new Random().nextInt((int) (Math.pow(2, retries))) + 1;
+        try {
+          debug(
+              String.format(
+                  "Client::take, backoff_slots = %d, retry = %d", backoff_slots, retries));
+          Thread.sleep((long) backoff_slots * SLOT_DURATION * 1000);
+        } catch (InterruptedException e) {
+          debug(String.format("InterruptedException: %s", e.getMessage()));
+          throw new RuntimeException(e);
+        }
+        lockedServers = new HashSet<>();
+        collectorFirstPhase = new TakeResponseCollector();
+        continue;
       }
 
-      // if we chose a tuple in phase 1 we can move to phase 2
-      List<String> res = getResponsesIntersection(collectorFirstPhase.getResponses());
-      if (!res.isEmpty()) {
-        takenTuple = res.get(0);
-        break;
+      // got majority, but not all servers locked, repeat phase 1
+      if (lockedServers.size() != 3) {
+        collectorFirstPhase.removeUnlockedServerResponses();
+        debug("Retrying phase 1, no lock on all servers");
+        continue;
       }
 
-      // phase 1 release if unable to acquire a tuple
-      TakeResponseCollector collectorRelease = new TakeResponseCollector(3);
-      for (Integer id : delayer) {
-        ServerEntry server = tupleSpacesService.getServer(id);
-        tupleSpacesService.takePhase1Release(
-            this.id,
-            server,
-            new TupleSpacesTakeStreamObserver<>(
-                PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collectorRelease));
+      // calculate intersection
+      List<String> responseIntersection =
+          getResponsesIntersection(
+              collectorFirstPhase.getResponses().stream()
+                  .map(TakeResponse::getTuplesList)
+                  .collect(Collectors.toList()));
+
+      /**
+       * This CANNOT happen for the given statement
+       *
+       * The servers are replicated and the client always picks a tuple that exists
+       * or, will eventually exist on one server and replicated to all others.
+       *
+       * If a lock is acquired on all servers then this intersection cannot be empty.
+       *
+       * We chose to simply release to maintain liveness
+       */
+      if (responseIntersection.isEmpty()) {
+        debug("[!] Empty intersection");
+        takePhase1Release(lockedServers);
+        throw new TupleSpacesServiceException("Non empty intersection on all locked servers, the servers might not be replicated...");
       }
 
-      debug("Waiting on 1st phase release responses");
-      collectorRelease.waitAllResponses();
-      if (!collectorRelease.getExceptions().isEmpty()) {
-        throw new TupleSpacesServiceRPCFailureException(
-            collectorRelease.getExceptions().get(0).getMessage());
-      }
-
-      retries++;
-      int backoff_slots = new Random().nextInt((int) (Math.pow(2, retries)));
-      debug(
-          String.format(
-              "Exponential backoff time slots: %d, attempt number %s", backoff_slots, retries));
-      setDelay(0, backoff_slots * SLOT_DURATION);
-      setDelay(1, backoff_slots * SLOT_DURATION);
-      setDelay(2, backoff_slots * SLOT_DURATION);
+      // tuple to be removed in phase 2
+      String chosenTuple = responseIntersection.get(0);
+      // phase2
+      takePhase2(chosenTuple);
+      return chosenTuple;
     }
 
-    resetDelays();
-    if (takenTuple == null) {
-      throw new TakeTooManyCollisionsException();
-    }
+    throw new TakeTooManyCollisionsException();
+  }
 
-    // phase 2
-    debug("Selected tuple in 1st phase: " + takenTuple);
-    TakeResponseCollector collectorSecondPhase = new TakeResponseCollector(3);
+  private void takePhase1(
+      String searchPattern, Set<String> lockedServers, TakeResponseCollector collector)
+      throws TupleSpacesServiceRPCFailureException {
+    debug(String.format("Client::takePhase1: lockedServers=%s", lockedServers));
+
+    collector.setTaskCount(3 - lockedServers.size());
     for (Integer id : delayer) {
       ServerEntry server = tupleSpacesService.getServer(id);
-      tupleSpacesService.takePhase2(
-          takenTuple,
+      if (lockedServers.contains(server.getQualifier())) continue; // skip servers already locked
+
+      tupleSpacesService.takePhase1(
+          searchPattern,
           this.id,
           server,
           new TupleSpacesTakeStreamObserver<>(
-              PHASE_2, server.getAddress(), server.getQualifier(), collectorSecondPhase));
+              PHASE_1, server.getAddress(), server.getQualifier(), collector));
     }
 
-    debug("Waiting on 2nd phase responses");
-    collectorSecondPhase.waitAllResponses();
-    if (!collectorSecondPhase.getExceptions().isEmpty()) {
+    debug(String.format("Client::takePhase1, blocked waiting on #%d 1st phase responses", 3 - lockedServers.size()));
+    collector.waitResponses();
+    if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceRPCFailureException(
-          collectorSecondPhase.getExceptions().get(0).getMessage());
+          collector.getExceptions().get(0).getMessage());
+    }
+  }
+
+  private void takePhase1Release(Set<String> lockedServers)
+      throws TupleSpacesServiceRPCFailureException {
+    debug(String.format("Client::takePhase1Release: lockedServers=%s", lockedServers));
+
+    TakeResponseCollector collector = new TakeResponseCollector();
+    collector.setTaskCount(lockedServers.size());
+    for (Integer id : delayer) {
+      ServerEntry server = tupleSpacesService.getServer(id);
+      if (!lockedServers.contains(server.getQualifier()))
+        continue; // dont send release to servers which client hasn't locked
+
+      tupleSpacesService.takePhase1Release(
+          this.id,
+          server,
+          new TupleSpacesTakeStreamObserver<>(
+              PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collector));
     }
 
-    return takenTuple;
+    debug(String.format("Client::takePhase1, blocked waiting on #%d release responses", lockedServers.size()));
+    collector.waitResponses();
+    if (!collector.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceRPCFailureException(
+          collector.getExceptions().get(0).getMessage());
+    }
+  }
+
+  private void takePhase2(String tuple) throws TupleSpacesServiceRPCFailureException {
+    debug(String.format("Client::takePhase2: tuple=%s", tuple));
+
+    TakeResponseCollector collector = new TakeResponseCollector();
+    collector.setTaskCount(3);
+    for (Integer id : delayer) {
+      ServerEntry server = tupleSpacesService.getServer(id);
+      tupleSpacesService.takePhase2(
+          tuple,
+          this.id,
+          server,
+          new TupleSpacesTakeStreamObserver<>(
+              PHASE_2, server.getAddress(), server.getQualifier(), collector));
+    }
+
+    debug("Client::takePhase2, blocked waiting on #3 2nd phase responses");
+    collector.waitResponses();
+    if (!collector.getExceptions().isEmpty()) {
+      throw new TupleSpacesServiceRPCFailureException(
+          collector.getExceptions().get(0).getMessage());
+    }
   }
 
   /**
@@ -335,10 +393,6 @@ public class Client {
    */
   public void setDelay(int qualifier, int delay) {
     delayer.setDelay(qualifier, delay);
-  }
-
-  public void resetDelays() {
-    delayer.resetDelays();
   }
 
   /**

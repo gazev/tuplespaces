@@ -37,7 +37,7 @@ public class ClientResponseCollector {
   }
 
   public synchronized void waitAllResponses(int n) {
-    debug(String.format("Call ClientResponseCollector::waitAllResponses: responseNumber=%d", n));
+    debug(String.format("ClientResponseCollector::waitAllResponses: responseNumber=%d", n));
     while ((responses.size() + exceptions.size()) < n) {
       try {
         wait();

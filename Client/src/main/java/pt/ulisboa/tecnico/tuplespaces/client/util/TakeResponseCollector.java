@@ -1,35 +1,69 @@
 package pt.ulisboa.tecnico.tuplespaces.client.util;
 
 import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
+import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.serviceName;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TakeResponseCollector {
-  List<List<String>> responses;
-  List<Exception> exceptions;
-  int minResponses;
+  public static class TakeResponse {
+    private final String serverQual;
+    private final List<String> tuplesList;
 
-  public TakeResponseCollector(int minResponses) {
-    this.responses = new ArrayList<>();
-    this.exceptions = new ArrayList<>();
-    this.minResponses = minResponses;
+    public TakeResponse(String serverQual, List<String> response) {
+      this.serverQual = serverQual;
+      this.tuplesList = response;
+    }
+
+    public String getServerQual() {
+      return serverQual;
+    }
+
+    public List<String> getTuplesList() {
+      return tuplesList;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("{serverQual=%s, tuplesList=%s}", serverQual, tuplesList);
+    }
   }
 
-  public synchronized List<List<String>> getResponses() {
+  List<TakeResponse> responses;
+  List<Exception> exceptions;
+  int taskCount;
+
+  public TakeResponseCollector() {
+    this.responses = new ArrayList<>();
+    this.exceptions = new ArrayList<>();
+  }
+
+  public synchronized List<TakeResponse> getResponses() {
     return responses;
+  }
+
+  public synchronized void setTaskCount(int n) {
+    taskCount = n;
   }
 
   public synchronized List<Exception> getExceptions() {
     return exceptions;
   }
 
+  public void removeUnlockedServerResponses() {
+    exceptions = new ArrayList<>();
+    responses = responses.stream().filter(t -> !t.getTuplesList().isEmpty()).collect(Collectors.toList());
+  }
+
   public synchronized void taskDone() {
-    minResponses--;
+    debug(String.format("TakeResponseCollector::taskDone tuplesList=%s", responses));
+    taskCount--;
     notifyAll();
   }
 
-  public synchronized void saveResponse(List<String> response) {
+  public synchronized void saveResponse(TakeResponse response) {
     responses.add(response);
   }
 
@@ -37,9 +71,9 @@ public class TakeResponseCollector {
     exceptions.add(e);
   }
 
-  public synchronized void waitAllResponses() {
-    debug("Call TakeResponseCollector::waitAllResponses");
-    while (minResponses > 0) {
+  public synchronized void waitResponses() {
+    debug(String.format("TakeResponseCollector::waitResponses: taskCount=%d", taskCount));
+    while (taskCount > 0) {
       try {
         wait();
       } catch (InterruptedException e) {

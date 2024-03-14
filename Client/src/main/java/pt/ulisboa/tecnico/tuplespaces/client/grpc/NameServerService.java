@@ -33,14 +33,14 @@ public class NameServerService {
 
   /** Create channel and stub for name server. */
   private void setup() {
-    debug(String.format("Call NameServerService::connect %s", this));
+    debug(String.format("NameServerService::connect %s", this));
     this.channel = ManagedChannelBuilder.forTarget(this.address).usePlaintext().build();
     this.stub = NameServerGrpc.newBlockingStub(this.channel);
   }
 
   /** Perform name server shutdown logic. */
   public void shutdown() {
-    debug(String.format("Call NameServerService::shutdown %s", this));
+    debug(String.format("NameServerService::shutdown %s", this));
     this.channel.shutdown();
   }
 
@@ -84,7 +84,7 @@ public class NameServerService {
       throws NameServerRPCFailureException, NameServerNoServersException {
     debug(
         String.format(
-            "Call NameServerService::lookup %s: serviceName=%s, qualifier=%s",
+            "NameServerService::lookup %s: serviceName=%s, qualifier=%s",
             this, serviceName, qualifier));
     NameServerOuterClass.LookupResponse response = null;
     try {

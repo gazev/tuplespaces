@@ -16,7 +16,7 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService.ServerEntry;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TakeTooManyCollisionsException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.BackoffRetriesExceeded;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
@@ -101,9 +101,9 @@ public class Client {
       System.err.printf(
           "[ERROR] Invalid argument %s for command %s. Error: %s\n", args, command, e.getMessage());
       return;
-    } catch (TakeTooManyCollisionsException e) {
+    } catch (BackoffRetriesExceeded e) {
       System.err.printf(
-          "[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation\n",
+          "[ERROR] Couldn't acquire a tuple after %d retries with backoff, aborting take operation\n",
           BACKOFF_RETRIES);
       return;
     } catch (TupleSpacesServiceException e) {
@@ -134,7 +134,7 @@ public class Client {
       throws InvalidCommandException,
           InvalidArgumentException,
           TupleSpacesServiceException,
-          TakeTooManyCollisionsException {
+          BackoffRetriesExceeded {
     switch (command) {
       case PUT:
         return put(args);
@@ -208,7 +208,7 @@ public class Client {
 
   /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
-      throws TupleSpacesServiceException, InvalidArgumentException, TakeTooManyCollisionsException {
+      throws TupleSpacesServiceException, InvalidArgumentException, BackoffRetriesExceeded {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
@@ -286,7 +286,9 @@ public class Client {
       return chosenTuple;
     }
 
-    throw new TakeTooManyCollisionsException();
+    // in XuLiskov it is said the client should keep requesting, but since we are unaware of what are real world Linda's
+    // requirements we simply set a limit, this is easily altered
+    throw new BackoffRetriesExceeded(); // backoff limit exceeded, which can also indicate tuple doesn't exist
   }
 
   private void takePhase1(

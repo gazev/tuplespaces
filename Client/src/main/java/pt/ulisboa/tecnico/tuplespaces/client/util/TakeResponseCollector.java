@@ -77,7 +77,8 @@ public class TakeResponseCollector {
       try {
         wait();
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        debug(String.format("InterruptedException: %s", e.getMessage()));
+        throw new RuntimeException(e);
       }
     }
   }

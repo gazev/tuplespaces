@@ -102,7 +102,7 @@ public class ServerState {
    * @return list of tuples strings
    * @throws InvalidInputSearchPatternException if invalid search pattern is provided
    */
-  private List<String> getUnlockedMatchingTuples(String pattern, Integer clientId)
+  private List<String> getMatchingTuples(String pattern, Integer clientId)
       throws InvalidInputSearchPatternException {
     if (isInvalidTuple(pattern)) {
       throw new InvalidInputSearchPatternException(pattern);
@@ -114,12 +114,12 @@ public class ServerState {
       return tuples.stream()
           .filter(
               t ->
-                  t.isUnlocked()
-                      && t.getTuple().matches(pattern)
-                      && !seenTuples.contains(t.getTuple())) // don't add duplicates
+                  !seenTuples.contains(t.getTuple())
+                      && (t.isUnlocked() || t.isLocked() && t.getHeldClientId().equals(clientId))
+                      && t.getTuple().matches(pattern))
           .peek(
               t -> {
-                t.lock(clientId);
+                if (t.isUnlocked()) t.lock(clientId);
                 seenTuples.add(t.getTuple());
               })
           .map(Tuple::getTuple)
@@ -149,8 +149,7 @@ public class ServerState {
     for (Tuple t : tuples) {
       if (t.isLocked() && t.getHeldClientId().equals(clientId)) {
         t.unlock();
-        if (t.getTuple().equals(tupleStr))
-          tuple = t;
+        if (t.getTuple().equals(tupleStr)) tuple = t;
       }
     }
 
@@ -202,7 +201,7 @@ public class ServerState {
       throw new InvalidInputSearchPatternException(pattern);
     }
 
-    return getUnlockedMatchingTuples(pattern, clientId);
+    return getMatchingTuples(pattern, clientId);
   }
 
   public void takePhase1Release(Integer clientId) {

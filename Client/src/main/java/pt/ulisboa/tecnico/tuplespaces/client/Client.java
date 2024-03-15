@@ -4,6 +4,8 @@ import static pt.ulisboa.tecnico.tuplespaces.client.ClientMain.debug;
 import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
@@ -44,6 +46,7 @@ public class Client {
       TuplesSpacesService tupleSpacesService,
       NameServerService nameServerService) {
     this.id = randomId();
+    debug("Client ID: " + this.id);
     this.serviceName = serviceName;
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
@@ -100,7 +103,7 @@ public class Client {
       return;
     } catch (TakeTooManyCollisionsException e) {
       System.err.printf(
-          "[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation",
+          "[ERROR] Couldn't acquire a tuple after %d attempts, aborting take operation\n",
           BACKOFF_RETRIES);
       return;
     } catch (TupleSpacesServiceException e) {
@@ -179,21 +182,27 @@ public class Client {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
+    ExecutorService executor = Executors.newSingleThreadExecutor();
     ClientResponseCollector collector = new ClientResponseCollector();
-    for (Integer id : delayer) {
-      ServerEntry server = tupleSpacesService.getServer(id);
-      tupleSpacesService.read(
-          searchPattern,
-          server,
-          new TupleSpacesStreamObserver<>(
-              READ, server.getAddress(), server.getQualifier(), collector));
-    }
+    executor.submit(
+        () -> {
+          for (Integer id : delayer) {
+            ServerEntry server = tupleSpacesService.getServer(id);
+            tupleSpacesService.read(
+                searchPattern,
+                server,
+                new TupleSpacesStreamObserver<>(
+                    READ, server.getAddress(), server.getQualifier(), collector));
+          }
+        });
 
     collector.waitAllResponses(1);
     if (!collector.getExceptions().isEmpty()) {
+      executor.shutdown();
       throw new TupleSpacesServiceException(collector.getExceptions().get(0).getMessage());
     }
 
+    executor.shutdown();
     return collector.getResponses().get(0);
   }
 
@@ -210,7 +219,7 @@ public class Client {
       // phase1 request
       takePhase1(searchPattern, lockedServers, collectorFirstPhase);
 
-      // check servers with successful lock
+      // add locked servers to locked servers set
       for (TakeResponse r : collectorFirstPhase.getResponses()) {
         if (!r.getTuplesList().isEmpty()) lockedServers.add(r.getServerQual()); // locked server
       }
@@ -234,8 +243,15 @@ public class Client {
         continue;
       }
 
-      // got majority, but not all servers locked, repeat phase 1
+      // got majority, but not all servers locked, repeat phase 1 only on remaining servers
       if (lockedServers.size() != 3) {
+        // we apply a little delay because other clients can't instantly release the minority
+        try {
+          Thread.sleep(SLOT_DURATION * 500);
+        } catch (InterruptedException e) {
+          debug(String.format("InterruptedException: %s", e.getMessage()));
+          throw new RuntimeException(e);
+        }
         collectorFirstPhase.removeUnlockedServerResponses();
         debug("Retrying phase 1, no lock on all servers");
         continue;
@@ -248,20 +264,19 @@ public class Client {
                   .map(TakeResponse::getTuplesList)
                   .collect(Collectors.toList()));
 
-      /**
-       * This CANNOT happen for the given statement
-       *
-       * The servers are replicated and the client always picks a tuple that exists
-       * or, will eventually exist on one server and replicated to all others.
-       *
-       * If a lock is acquired on all servers then this intersection cannot be empty.
-       *
-       * We chose to simply release to maintain liveness
-       */
+      // empty intersection, retry phase1
       if (responseIntersection.isEmpty()) {
-        debug("[!] Empty intersection");
-        takePhase1Release(lockedServers);
-        throw new TupleSpacesServiceException("Non empty intersection on all locked servers, the servers might not be replicated...");
+        // we apply a little delay here because we don't want to spam the server
+        try {
+          Thread.sleep(SLOT_DURATION * 500);
+        } catch (InterruptedException e) {
+          debug(String.format("InterruptedException: %s", e.getMessage()));
+          throw new RuntimeException(e);
+        }
+        debug("Retrying phase 1, empty intersection on all servers");
+        lockedServers = new HashSet<>();
+        collectorFirstPhase = new TakeResponseCollector();
+        continue;
       }
 
       // tuple to be removed in phase 2
@@ -292,7 +307,10 @@ public class Client {
               PHASE_1, server.getAddress(), server.getQualifier(), collector));
     }
 
-    debug(String.format("Client::takePhase1, blocked waiting on #%d 1st phase responses", 3 - lockedServers.size()));
+    debug(
+        String.format(
+            "Client::takePhase1, blocked waiting on #%d 1st phase responses",
+            3 - lockedServers.size()));
     collector.waitResponses();
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceRPCFailureException(
@@ -318,7 +336,9 @@ public class Client {
               PHASE_1_RELEASE, server.getAddress(), server.getQualifier(), collector));
     }
 
-    debug(String.format("Client::takePhase1, blocked waiting on #%d release responses", lockedServers.size()));
+    debug(
+        String.format(
+            "Client::takePhase1, blocked waiting on #%d release responses", lockedServers.size()));
     collector.waitResponses();
     if (!collector.getExceptions().isEmpty()) {
       throw new TupleSpacesServiceRPCFailureException(

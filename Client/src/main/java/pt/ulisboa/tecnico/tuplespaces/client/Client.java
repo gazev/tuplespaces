@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.SequencerService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesStreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesTakeStreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
@@ -38,6 +39,7 @@ public class Client {
   private final String serviceQualifier;
   private final TuplesSpacesService tupleSpacesService;
   private final NameServerService nameServerService;
+  private final SequencerService sequencerService;
   private OrderedDelayer delayer;
 
   public Client(
@@ -51,6 +53,7 @@ public class Client {
     this.serviceQualifier = serviceQualifier;
     this.tupleSpacesService = tupleSpacesService;
     this.nameServerService = nameServerService;
+    this.sequencerService = new SequencerService();
     setDelayer(3);
   }
 
@@ -440,5 +443,16 @@ public class Client {
       intersection.retainAll(list);
     }
     return intersection;
+  }
+
+  private Integer getSequenceNumber() {
+    Integer seq = null;
+    try {
+      seq = sequencerService.getSeqNumber();
+    } catch (Exception e) {
+      System.err.println("Failed to get sequence number");
+      System.err.println(e.getMessage());
+    }
+    return seq;
   }
 }

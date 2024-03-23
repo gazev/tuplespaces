@@ -7,8 +7,8 @@ import io.grpc.ManagedChannelBuilder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaGrpc;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
+import pt.ulisboa.tecnico.tuplespaces.replicaTotalOrder.contract.TupleSpacesReplicaGrpc;
+import pt.ulisboa.tecnico.tuplespaces.replicaTotalOrder.contract.TupleSpacesReplicaTotalOrder.*;
 
 /** TuplesSpacesService class encapsulates the gRPC interface of the TupleSpaces service client. */
 public class TuplesSpacesService {
@@ -193,69 +193,26 @@ public class TuplesSpacesService {
   }
 
   /**
-   * TupleSpaces 'takePhase1' gRPC wrapper.
-   *
-   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
-   *     read from the given server.
-   * @param clientId Client identifier
-   * @param server Server where we which to invoke the RPC
-   * @param observer TupleSpacesStreamObserver for async stub
-   */
-  public void takePhase1(
+ * TupleSpaces 'take' gRPC wrapper.
+ *
+ * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
+ *     take from the given server.
+ * @param seqNumber Sequence number
+ * @param server Server where we wish to invoke the RPC
+ * @param observer TupleSpacesStreamObserver for async stub
+ */
+  public void take(
       String searchPattern,
-      Integer clientId,
+      Integer seqNumber,
       ServerEntry server,
-      TupleSpacesTakeStreamObserver<TakePhase1Response> observer) {
+      TupleSpacesTakeStreamObserver<TakeResponse> observer) {
     debug(
-        String.format(
-            "TuplesSpacesService::takePhase1: searchPattern=%s, server=%s, observer=%s",
-            searchPattern, server, observer));
-    server.stub.takePhase1(
-        TakePhase1Request.newBuilder()
-            .setSearchPattern(searchPattern)
-            .setClientId(clientId)
-            .build(),
-        observer);
-  }
-
-  /**
-   * TupleSpaces 'takePhase1Release' gRPC wrapper.
-   *
-   * @param clientId Client identifier
-   * @param server Server where we which to invoke the RPC
-   * @param observer TupleSpacesStreamObserver for async stub
-   */
-  public void takePhase1Release(
-      Integer clientId,
-      ServerEntry server,
-      TupleSpacesTakeStreamObserver<TakePhase1ReleaseResponse> observer) {
-    debug(
-        String.format(
-            "TuplesSpacesService::takePhase1Release: server=%s, observer=%s",
-            server, observer));
-    server.stub.takePhase1Release(
-        TakePhase1ReleaseRequest.newBuilder().setClientId(clientId).build(), observer);
-  }
-
-  /**
-   * TupleSpaces 'takePhase2' gRPC wrapper.
-   *
-   * @param clientId Client identifier
-   * @param server Server where we which to invoke the RPC
-   * @param observer TupleSpacesStreamObserver for async stub
-   */
-  public void takePhase2(
-      String tuple,
-      Integer clientId,
-      ServerEntry server,
-      TupleSpacesTakeStreamObserver<TakePhase2Response> observer) {
-    debug(
-        String.format(
-            "TuplesSpacesService::takePhase2: server=%s, observer=%s", server, observer));
-    server.stub.takePhase2(
-        TakePhase2Request.newBuilder().setTuple(tuple).setClientId(clientId).build(), observer);
-  }
-
+      String.format(
+        "TuplesSpacesService::take: searchPattern=%s, seqNumber=%d, server=%s, observer=%s",
+        searchPattern, seqNumber, server, observer));
+      server.stub.take(TakeRequest.newBuilder().setSearchPattern(searchPattern).setSeqNumber(seqNumber).build(), observer);
+      }
+ 
   /**
    * TupleSpaces 'getTupleSpacesState' gRPC wrapper.
    *

@@ -6,6 +6,8 @@ import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import io.grpc.StatusRuntimeException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidArgumentException;
 import pt.ulisboa.tecnico.tuplespaces.client.exceptions.InvalidCommandException;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.NameServerService;
@@ -13,12 +15,11 @@ import pt.ulisboa.tecnico.tuplespaces.client.grpc.SequencerService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TupleSpacesStreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.TuplesSpacesService.ServerEntry;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerNoServersException;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.NameServerRPCFailureException;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.BackoffRetriesExceeded;
-import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceException;
+import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.*;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.client.util.OrderedDelayer;
+
+import javax.naming.ServiceUnavailableException;
 
 public class Client {
   public static final int RPC_RETRIES = 0; // we assume servers aren't faulty and network is good
@@ -34,7 +35,7 @@ public class Client {
   private final String serviceQualifier;
   private final TuplesSpacesService tupleSpacesService;
   private final NameServerService nameServerService;
-  private final SequencerService sequencerService;
+  private SequencerService sequencerService;
   private OrderedDelayer delayer;
 
   public Client(
@@ -99,10 +100,11 @@ public class Client {
       System.err.printf(
           "[ERROR] Invalid argument %s for command %s. Error: %s\n", args, command, e.getMessage());
       return;
-    } catch (BackoffRetriesExceeded e) {
+    } catch (SequencerServiceException e) {
       System.err.printf(
-          "[ERROR] Couldn't acquire a tuple after %d retries with backoff, aborting take operation\n",
-          BACKOFF_RETRIES);
+          "[ERROR] Couldn't get a sequence number from Sequencer Service. Error: %s\n",
+          e.getMessage());
+        this.sequencerService = new SequencerService();
       return;
     } catch (TupleSpacesServiceException e) {
       System.err.printf("[ERROR] Failed %s RPC. Error: %s\n", command, e.getMessage());
@@ -132,7 +134,7 @@ public class Client {
       throws InvalidCommandException,
           InvalidArgumentException,
           TupleSpacesServiceException,
-          BackoffRetriesExceeded {
+          SequencerServiceException {
     switch (command) {
       case PUT:
         return put(args);
@@ -150,14 +152,16 @@ public class Client {
   /**
    * Simply calls TupleSpacesService put and waits on all responses, @see TupleSpacesService.put()
    */
-  private String put(String tuple) throws TupleSpacesServiceException, InvalidArgumentException {
+  private String put(String tuple) throws TupleSpacesServiceException, InvalidArgumentException, SequencerServiceException {
     if (!isValidTupleOrSearchPattern(tuple)) throw new InvalidArgumentException("Invalid tuple");
 
+    Integer seqNumber = getSequenceNumber();
     ClientResponseCollector collector = new ClientResponseCollector();
     for (Integer index : delayer) {
       ServerEntry server = tupleSpacesService.getServer(index);
       tupleSpacesService.put(
           tuple,
+          seqNumber,
           server,
           new TupleSpacesStreamObserver<>(
               PUT, server.getAddress(), server.getQualifier(), collector));
@@ -206,16 +210,17 @@ public class Client {
 
   /** Perform 2 step XuLiskov take operation */
   private String take(String searchPattern)
-      throws TupleSpacesServiceException, InvalidArgumentException, BackoffRetriesExceeded {
+      throws TupleSpacesServiceException, InvalidArgumentException, SequencerServiceException {
     if (!isValidTupleOrSearchPattern(searchPattern))
       throw new InvalidArgumentException("Invalid search pattern");
 
+    Integer seqNumber = getSequenceNumber();
     ClientResponseCollector collector = new ClientResponseCollector();
     for (Integer index : delayer) {
       ServerEntry server = tupleSpacesService.getServer(index);
       tupleSpacesService.take(
           searchPattern,
-          getSequenceNumber(),
+          seqNumber,
           server,
           new TupleSpacesStreamObserver<>(
               TAKE, server.getAddress(), server.getQualifier(), collector));
@@ -286,13 +291,14 @@ public class Client {
     return (int) (mostSignificantBits & Integer.MAX_VALUE);
   }
 
-  private Integer getSequenceNumber() {
+  private Integer getSequenceNumber() throws SequencerServiceException {
     Integer seq = null;
     try {
       seq = sequencerService.getSeqNumber();
-    } catch (Exception e) {
+    } catch (StatusRuntimeException e) {
       System.err.println("Failed to get sequence number");
       System.err.println(e.getMessage());
+      throw new SequencerServiceException(e.getMessage());
     }
     return seq;
   }

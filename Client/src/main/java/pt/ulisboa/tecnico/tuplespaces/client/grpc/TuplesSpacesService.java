@@ -167,12 +167,12 @@ public class TuplesSpacesService {
    * @param observer TupleSpacesStreamObserver for async stub
    */
   public void put(
-      String tuple, ServerEntry server, TupleSpacesStreamObserver<PutResponse> observer) {
+      String tuple, Integer seqNumber, ServerEntry server, TupleSpacesStreamObserver<PutResponse> observer) {
     debug(
         String.format(
-            "TupleSpacesService::put: tuple=%s, server=%s, observer=%s",
-            tuple, server, observer));
-    server.stub.put(PutRequest.newBuilder().setNewTuple(tuple).build(), observer);
+            "TupleSpacesService::put: tuple=%s, seqNumber=%d, server=%s, observer=%s",
+            tuple, seqNumber, server, observer));
+    server.stub.put(PutRequest.newBuilder().setNewTuple(tuple).setSeqNumber(seqNumber).build(), observer);
   }
 
   /**

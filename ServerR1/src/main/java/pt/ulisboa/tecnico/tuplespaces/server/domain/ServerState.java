@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
+import static pt.ulisboa.tecnico.tuplespaces.server.ServerMain.debug;
+
 import java.util.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -59,11 +61,12 @@ public class ServerState {
     // lock until it's this operation time to be executed
     stateLock.lock();
     while (!seqNumber.equals(state)) {
-        try {
-            stateChange.await();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+      try {
+        debug(String.format("put SN %d, state %d - Out of order, waiting", seqNumber, state));
+        stateChange.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     synchronized (this) {
@@ -76,14 +79,15 @@ public class ServerState {
     for (PendingTake pendingOperation : pendingTakes) {
       synchronized (pendingOperation) {
         if (tuple.matches(pendingOperation.getSearchPattern())) {
-          pendingOperation.notify(); // notify take waiting
+          debug(String.format("put SN %d - Notified pending take for %s", seqNumber, pendingOperation.searchPattern));
+          pendingOperation.notify(); // notify take waitin
           break;
         }
       }
     }
 
-    stateLock.unlock();
     stateChange.signalAll();
+    stateLock.unlock();
   }
 
   /**
@@ -123,53 +127,61 @@ public class ServerState {
     stateLock.lock();
     while (!seqNumber.equals(state)) {
       try {
+        debug(String.format("take SN %d, state %d - Out of order, waiting", seqNumber, state));
         stateChange.await();
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
-      } finally {
-        state += 1;
       }
     }
 
-    // first attempt
+    state += 1;
+
+    // first attempt at getting tuple
     synchronized (this) {
       for (String t : tuples) {
         if (t.matches(pattern)) {
           tuples.remove(t);
-          stateLock.unlock();
           stateChange.signalAll();
+          stateLock.unlock();
           return t;
         }
       }
+    }
 
-      // doesn't exist, block waiting on put
-      PendingTake pendingOperation = new PendingTake(pattern);
-      pendingTakes.add(pendingOperation);
-      // if we get here and tuple still doesn't exist, we wait
-      synchronized (pendingOperation) {
-        try {
-          stateLock.unlock();
-          stateChange.signalAll();
-          pendingOperation.wait(); // unblocked by put operation
-          pendingTakes.remove(pendingOperation);
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
+    debug(String.format("take SN %d - No tuple found", seqNumber));
+
+    // doesn't exist, block waiting on put
+    PendingTake pendingOperation = new PendingTake(pattern);
+    pendingTakes.add(pendingOperation);
+    // if we get here and tuple still doesn't exist, we wait
+    synchronized (pendingOperation) {
+      try {
+        stateChange.signalAll();
+        stateLock.unlock();
+        debug(
+            String.format(
+                "take SN %d - Waiting for %s",
+                seqNumber, pendingOperation.getSearchPattern()));
+        pendingOperation.wait(); // unblocked by put operation
+        pendingTakes.remove(pendingOperation);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
+    }
 
-      while (true) {
-        synchronized (this) {
-          for (String t : tuples) {
-            if (t.matches(pattern)) {
-              tuples.remove(t);
-              stateLock.unlock();
-              stateChange.signalAll();
-              return t;
-            }
-          }
+    // after unlock, tuple will exist
+    synchronized (this) {
+      for (String t : tuples) {
+        if (t.matches(pattern)) {
+          tuples.remove(t);
+          return t;
         }
       }
     }
+
+    // never reached, if it's reached then there might be a bug
+    throw new RuntimeException(
+        "Reach end of ServerState::take function, this is unexpected behaviour and shouldn't happen");
   }
 
   /**

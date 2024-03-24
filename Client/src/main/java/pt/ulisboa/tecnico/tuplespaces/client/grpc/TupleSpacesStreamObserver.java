@@ -8,7 +8,7 @@ import io.grpc.stub.StreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
 import pt.ulisboa.tecnico.tuplespaces.replicaTotalOrder.contract.TupleSpacesReplicaTotalOrder.TakeResponse;
-import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
+import pt.ulisboa.tecnico.tuplespaces.replicaTotalOrder.contract.TupleSpacesReplicaTotalOrder.*;
 
 public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
   private final ClientResponseCollector collector;

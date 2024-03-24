@@ -1,11 +1,9 @@
 package pt.ulisboa.tecnico.tuplespaces.server.domain;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidClient;
+import java.util.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputSearchPatternException;
 import pt.ulisboa.tecnico.tuplespaces.server.domain.exceptions.InvalidInputTupleStringException;
 
@@ -13,44 +11,25 @@ public class ServerState {
   private static final String BGN_TUPLE = "<";
   private static final String END_TUPLE = ">";
 
-  class Tuple {
-    private final String tuple;
-    private boolean locked;
-    private Integer heldClientId;
+  class PendingTake {
+    private String searchPattern;
 
-    public Tuple(String tuple) {
-      this.tuple = tuple;
-      this.locked = false;
+    public PendingTake(String pattern) {
+      searchPattern = pattern;
     }
 
-    public String getTuple() {
-      return tuple;
-    }
-
-    public Integer getHeldClientId() {
-      return heldClientId;
-    }
-
-    public boolean isUnlocked() {
-      return !locked;
-    }
-
-    public boolean isLocked() {
-      return locked;
-    }
-
-    public void lock(Integer clientId) {
-      locked = true;
-      heldClientId = clientId;
-    }
-
-    public void unlock() {
-      locked = false;
-      heldClientId = null;
+    public String getSearchPattern() {
+      return searchPattern;
     }
   }
 
-  private final List<Tuple> tuples;
+  private final List<String> tuples; // tuples in the tuplespace
+
+  private Integer state = 1;
+  private final Lock stateLock = new ReentrantLock();
+  private final Condition stateChange = stateLock.newCondition();
+
+  private final List<PendingTake> pendingTakes = new LinkedList<>(); // FIFO
 
   public ServerState() {
     this.tuples = new ArrayList<>();
@@ -67,115 +46,44 @@ public class ServerState {
   }
 
   /**
-   * Get a tuple from the TupleSpace matching the given pattern.
-   *
-   * @param pattern search pattern
-   * @return tuple matching the search pattern
-   * @throws InvalidInputSearchPatternException if given search pattern is invalid
-   */
-  private String getMatchingTuple(String pattern) throws InvalidInputSearchPatternException {
-    if (isInvalidTuple(pattern)) {
-      throw new InvalidInputSearchPatternException(pattern);
-    }
-
-    synchronized (this) {
-      while (true) {
-        for (Tuple t : this.tuples) {
-          if (t.getTuple().matches(pattern)) {
-            return t.getTuple();
-          }
-        }
-        try {
-          wait();
-        } catch (InterruptedException e) {
-          throw new RuntimeException(e);
-        }
-      }
-    }
-  }
-
-  /**
-   * Get a list of unlocked tuples from the TupleSpace matching the given pattern.
-   *
-   * @param pattern search pattern
-   * @param clientId clientId requesting the list which will lock the retrieved tuples
-   * @return list of tuples strings
-   * @throws InvalidInputSearchPatternException if invalid search pattern is provided
-   */
-  private List<String> getMatchingTuples(String pattern, Integer clientId)
-      throws InvalidInputSearchPatternException {
-    if (isInvalidTuple(pattern)) {
-      throw new InvalidInputSearchPatternException(pattern);
-    }
-
-    Set<String> seenTuples =
-        new HashSet<>(); // used to detect duplicate tuples, since server doesn't lock duplicates
-    synchronized (this) {
-      return tuples.stream()
-          .filter(
-              t ->
-                  !seenTuples.contains(t.getTuple())
-                      && (t.isUnlocked() || t.isLocked() && t.getHeldClientId().equals(clientId))
-                      && t.getTuple().matches(pattern))
-          .peek(
-              t -> {
-                if (t.isUnlocked()) t.lock(clientId);
-                seenTuples.add(t.getTuple());
-              })
-          .map(Tuple::getTuple)
-          .collect(Collectors.toList());
-    }
-  }
-
-  /**
-   * Unlock all tuples locked by client with clientId
-   *
-   * @param clientId with all tuples to be unlocked
-   */
-  private synchronized void unlockClientTuples(Integer clientId) {
-    tuples.stream()
-        .filter(t -> t.isLocked() && t.getHeldClientId().equals(clientId))
-        .forEach(Tuple::unlock);
-  }
-
-  /**
-   * Removes given tuple from the TupleSpace request by client with clientId
-   *
-   * @param tupleStr to be removed
-   * @param clientId requesting client ID
-   */
-  private synchronized void removeTuple(String tupleStr, Integer clientId) throws InvalidClient {
-    Tuple tuple = null;
-    for (Tuple t : tuples) {
-      if (t.isLocked() && t.getHeldClientId().equals(clientId)) {
-        t.unlock();
-        if (t.getTuple().equals(tupleStr)) tuple = t;
-      }
-    }
-
-    if (tuple == null) {
-      throw new InvalidClient(
-          String.format("Client %s has no access to tuple %s", clientId, tuple));
-    }
-
-    tuples.remove(tuple);
-  }
-
-  /**
    * Put given tuple in the TupleSpaces.
    *
    * @param tuple new tuple to be added.
    * @throws InvalidInputTupleStringException if given tuple is invalid
    */
-  public void put(String tuple) throws InvalidInputTupleStringException {
+  public void put(String tuple, Integer seqNumber) throws InvalidInputTupleStringException {
     if (isInvalidTuple(tuple)) {
       throw new InvalidInputTupleStringException(tuple);
     }
 
-    synchronized (this) {
-      this.tuples.add(new Tuple(tuple));
-      notifyAll();
+    // lock until it's this operation time to be executed
+    stateLock.lock();
+    while (!seqNumber.equals(state)) {
+        try {
+            stateChange.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
+
+    synchronized (this) {
+      this.tuples.add(tuple);
+      notifyAll(); // unlock reads
+      state += 1;
+    }
+
+    // wake up oldest take waiting for this tuple
+    for (PendingTake pendingOperation : pendingTakes) {
+      synchronized (pendingOperation) {
+        if (tuple.matches(pendingOperation.getSearchPattern())) {
+          pendingOperation.notify(); // notify take waiting
+          break;
+        }
+      }
+    }
+
+    stateLock.unlock();
+    stateChange.signalAll();
   }
 
   /**
@@ -191,25 +99,77 @@ public class ServerState {
     }
 
     synchronized (this) {
-      return getMatchingTuple(pattern);
+      while (true) {
+        for (String t : this.tuples) {
+          if (t.matches(pattern)) {
+            return t;
+          }
+        }
+        try {
+          wait();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
     }
   }
 
-  public List<String> takePhase1(String pattern, Integer clientId)
-      throws InvalidInputSearchPatternException {
+  public String take(String pattern, Integer seqNumber) throws InvalidInputSearchPatternException {
     if (isInvalidTuple(pattern)) {
       throw new InvalidInputSearchPatternException(pattern);
     }
 
-    return getMatchingTuples(pattern, clientId);
-  }
+    // lock until it's this operation time to be executed
+    stateLock.lock();
+    while (!seqNumber.equals(state)) {
+      try {
+        stateChange.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      } finally {
+        state += 1;
+      }
+    }
 
-  public void takePhase1Release(Integer clientId) {
-    unlockClientTuples(clientId);
-  }
+    // first attempt
+    synchronized (this) {
+      for (String t : tuples) {
+        if (t.matches(pattern)) {
+          tuples.remove(t);
+          stateLock.unlock();
+          stateChange.signalAll();
+          return t;
+        }
+      }
 
-  public void takePhase2(String tupleString, Integer clientId) throws InvalidClient {
-    removeTuple(tupleString, clientId);
+      // doesn't exist, block waiting on put
+      PendingTake pendingOperation = new PendingTake(pattern);
+      pendingTakes.add(pendingOperation);
+      // if we get here and tuple still doesn't exist, we wait
+      synchronized (pendingOperation) {
+        try {
+          stateLock.unlock();
+          stateChange.signalAll();
+          pendingOperation.wait(); // unblocked by put operation
+          pendingTakes.remove(pendingOperation);
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      while (true) {
+        synchronized (this) {
+          for (String t : tuples) {
+            if (t.matches(pattern)) {
+              tuples.remove(t);
+              stateLock.unlock();
+              stateChange.signalAll();
+              return t;
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -218,8 +178,6 @@ public class ServerState {
    * @return List of all tuples.
    */
   public synchronized List<String> getTupleSpacesState() {
-    return tuples.stream()
-        .map(Tuple::getTuple)
-        .collect(Collectors.toList()); // return copy of tuples list
+    return new ArrayList<>(tuples);
   }
 }

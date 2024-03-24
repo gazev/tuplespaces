@@ -31,7 +31,7 @@ public class ServerState {
   private final Lock stateLock = new ReentrantLock();
   private final Condition stateChange = stateLock.newCondition();
 
-  private final List<PendingTake> pendingTakes = new LinkedList<>(); // FIFO
+  private final List<PendingTake> pendingTakes = new LinkedList<>(); // iteration in FIFO order and appends to end of list
 
   public ServerState() {
     this.tuples = new ArrayList<>();
@@ -152,9 +152,9 @@ public class ServerState {
 
     // doesn't exist, block waiting on put
     PendingTake pendingOperation = new PendingTake(pattern);
-    pendingTakes.add(pendingOperation);
     // if we get here and tuple still doesn't exist, we wait
     synchronized (pendingOperation) {
+      pendingTakes.add(pendingOperation);
       try {
         stateChange.signalAll();
         stateLock.unlock();

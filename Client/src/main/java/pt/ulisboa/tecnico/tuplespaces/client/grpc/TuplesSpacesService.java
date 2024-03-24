@@ -193,19 +193,19 @@ public class TuplesSpacesService {
   }
 
   /**
- * TupleSpaces 'take' gRPC wrapper.
- *
- * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
- *     take from the given server.
- * @param seqNumber Sequence number
- * @param server Server where we wish to invoke the RPC
- * @param observer TupleSpacesStreamObserver for async stub
- */
+   * TupleSpaces 'take' gRPC wrapper.
+   *
+   * @param searchPattern A regex pattern (or simply a string) that matches the tuple we want to
+   *     take from the given server.
+   * @param seqNumber Sequence number
+   * @param server Server where we wish to invoke the RPC
+   * @param observer TupleSpacesStreamObserver for async stub
+   */
   public void take(
       String searchPattern,
       Integer seqNumber,
       ServerEntry server,
-      TupleSpacesTakeStreamObserver<TakeResponse> observer) {
+      TupleSpacesStreamObserver<TakeResponse> observer) {
     debug(
       String.format(
         "TuplesSpacesService::take: searchPattern=%s, seqNumber=%d, server=%s, observer=%s",

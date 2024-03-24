@@ -7,6 +7,7 @@ import static pt.ulisboa.tecnico.tuplespaces.client.CommandProcessor.GET_TUPLE_S
 import io.grpc.stub.StreamObserver;
 import pt.ulisboa.tecnico.tuplespaces.client.grpc.exceptions.TupleSpacesServiceRPCFailureException;
 import pt.ulisboa.tecnico.tuplespaces.client.util.ClientResponseCollector;
+import pt.ulisboa.tecnico.tuplespaces.replicaTotalOrder.contract.TupleSpacesReplicaTotalOrder.TakeResponse;
 import pt.ulisboa.tecnico.tuplespaces.replicaXuLiskov.contract.TupleSpacesReplicaXuLiskov.*;
 
 public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
@@ -33,7 +34,9 @@ public class TupleSpacesStreamObserver<R> implements StreamObserver<R> {
             "TupleSpacesStreamObserver::onNext procedureName=%s, serverAddr=%s, serverQual=%s",
             procedureName, serverAddr, serverQual));
     String responseRepr = "";
-    if (response instanceof ReadResponse && procedureName.equals(READ)) {
+    if (response instanceof TakeResponse && procedureName.equals(TAKE)) {
+      responseRepr = ((TakeResponse) response).getResult();
+    } else if (response instanceof ReadResponse && procedureName.equals(READ)) {
       responseRepr = ((ReadResponse) response).getResult();
     } else if (response instanceof PutResponse && procedureName.equals(PUT)) {
       // response is empty
